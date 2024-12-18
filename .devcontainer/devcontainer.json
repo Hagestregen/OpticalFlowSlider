@@ -1,0 +1,29 @@
+{
+  "name": "Existing Docker Compose (Extend)",
+  "dockerComposeFile": [
+    "docker-compose.yml"
+  ],
+  "service": "companion_imu",
+  "workspaceFolder": "/home/docker/OpticalFlowSlider",
+  "containerEnv": {
+    "LD_LIBRARY_PATH": "/opt/ros/foxy/lib"
+  },
+  "customizations": {
+    "vscode": {
+      	// Set *default* container specific settings.json values on container create.
+			"settings": {
+				"terminal.integrated.profiles.linux": {
+					"bash": {
+						"path": "bash",
+						"icon": "terminal-bash"
+					}
+        },
+        "terminal.integrated.defaultProfile.linux": "bash",
+				"git.rebaseWhenSync": true
+			},
+      "extensions": [
+      ]
+    }
+  },
+  "remoteUser": "docker"
+}

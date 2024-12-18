@@ -1,0 +1,60 @@
+version: '3.7'
+
+services:
+  companion_imu:
+    image: docker.mohntechnology.no/companion:OF
+    privileged: true
+    network_mode: host
+    environment:
+      - DISPLAY=$DISPLAY
+      - QT_X11_NO_MITSHM=1
+      - GIT_DISCOVERY_ACROSS_FILESYSTEM=1
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /dev/input:/dev/input
+      - /dev:/dev
+      - ../:/home/docker/OpticalFlowSlider
+      
+    # Overrides default command so things don't shut down after the process ends.
+    command: /bin/sh -c "while sleep 1000; do :; done"
+
+  # companion_imu_not_host:
+  #   image: docker.mohntechnology.no/companion:imu
+  #   privileged: true
+  #   environment:
+  #     - DISPLAY=$DISPLAY
+  #     - QT_X11_NO_MITSHM=1
+  #     - GIT_DISCOVERY_ACROSS_FILESYSTEM=1
+  #   volumes:
+  #     - /tmp/.X11-unix:/tmp/.X11-unix
+  #     - /dev/input:/dev/input
+  #     - /dev:/dev
+  #     - ../:/home/docker/net_inspector
+      
+  #   # Overrides default command so things don't shut down after the process ends.
+  #   command: /bin/sh -c "while sleep 1000; do :; done"
+    
+  # companion_imu_no_sim:
+  #   image: docker.mohntechnology.no/companion:imu_no_sim
+  #   privileged: true
+  #   network_mode: host
+  #   environment:
+  #     - DISPLAY=$DISPLAY
+  #     - QT_X11_NO_MITSHM=1
+  #     - GIT_DISCOVERY_ACROSS_FILESYSTEM=1
+  #   volumes:
+  #     - /tmp/.X11-unix:/tmp/.X11-unix
+  #     - /dev/input:/dev/input
+  #     - /dev:/dev
+  #     - ../:/home/docker/net_inspector
+  #     - /home/docker/net_inspector/auv_ws/build/   # Overwriting the build directory with empty directory
+  #     - /home/docker/net_inspector/auv_ws/log/     # Overwriting the log directory with empty directory
+  #     - /home/docker/net_inspector/auv_ws/install/ # Overwriting the install directory with empty directory
+  #     # Add any other volumes you need
+
+  #   # Overrides default command so things don't shut down after the process ends.
+  #   command:
+      # /bin/sh -c "sudo chown -R docker:docker /home/docker/net_inspector/auv_ws/build/ && 
+      #             sudo chown -R docker:docker /home/docker/net_inspector/auv_ws/install/ &&
+      #             sudo chown -R docker:docker /home/docker/net_inspector/auv_ws/log/ &&
+      #             while sleep 1000; do :; done"

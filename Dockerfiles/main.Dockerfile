@@ -34,6 +34,9 @@ RUN sudo apt-get install -y libssl-dev libusb-1.0-0-dev libudev-dev pkg-config l
 # Install pyrealsense2
 RUN pip install pyrealsense2
 
+# Install Dynamixel SDK for ROS
+RUN sudo apt-get update && sudo apt-get install -y ros-${ROS_DISTRO}-dynamixel-sdk
+
 
 
 ### Other potentially useful commands ###

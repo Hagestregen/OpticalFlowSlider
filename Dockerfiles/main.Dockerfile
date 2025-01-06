@@ -28,7 +28,11 @@ RUN echo "if [ -e /home/docker/OpticalFlowSlider/ros2_ws/install/setup.bash ]; t
 RUN sudo usermod -a -G video docker
 RUN sudo usermod -a -G dialout docker
 
+# Install dependencies for pyrealsense2
+RUN sudo apt-get install -y libssl-dev libusb-1.0-0-dev libudev-dev pkg-config libgtk-3-dev
 
+# Install pyrealsense2
+RUN pip install pyrealsense2
 
 
 

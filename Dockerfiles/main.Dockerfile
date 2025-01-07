@@ -7,21 +7,22 @@ USER docker
 # Disable Prompt During Packages Installation
 ARG DEBIAN_FRONTEND=noninteractive
 
+# Define ROS distribution
+ENV ROS_DISTRO=foxy 
+
 # Update and upgrade Ubuntu Software repository
-RUN sudo apt-get update
-RUN sudo apt-get upgrade -y
+RUN sudo apt-get update --allow-releaseinfo-change
+RUN sudo apt-get upgrade -y --fix-missing
 
 # ROS2 workspace
 WORKDIR /home/docker
 RUN mkdir -p OpticalFlowSlider/ros2_ws/src
-
-
+# RUN mkdir -p OpticalFlowSlider/ros_ws/src
 
 ### user settings ###
 COPY scripts/docker/settings/.vscode /home/docker/OpticalFlowSlider/ros2_ws/.vscode
 COPY scripts/docker/settings/.bash_aliases /home/docker/.bash_aliases
 
-# RUN echo "export IGN_GAZEBO_SYSTEM_PLUGIN_PATH=/home/docker/net_inspector/auv_ws/src/auv_simulation/auv_ign/plugin/move_pose/build" >> ~/.bashrc
 RUN echo "if [ -e /home/docker/OpticalFlowSlider/ros2_ws/install/setup.bash ]; then . /home/docker/OpticalFlowSlider/ros2_ws/install/setup.bash; fi" >> ~/.bashrc
 
 # get access to video devices and add user to dialout group for serial port access
@@ -34,9 +35,18 @@ RUN sudo apt-get install -y libssl-dev libusb-1.0-0-dev libudev-dev pkg-config l
 # Install pyrealsense2
 RUN pip install pyrealsense2
 
-# Install Dynamixel SDK for ROS
-RUN sudo apt-get update && sudo apt-get install -y ros-${ROS_DISTRO}-dynamixel-sdk
+# Install dependencies for Dynamixel SDK
+RUN sudo apt-get install -y git python3-colcon-common-extensions
 
+WORKDIR /home/docker/OpticalFlowSlider/ros2_ws/src
+# Clone Dynamixel SDK repository (ros2 branch)
+RUN git clone -b ros2 https://github.com/ROBOTIS-GIT/DynamixelSDK.git 
+
+# Build Dynamixel SDK
+RUN source /opt/ros/${ROS_DISTRO}/setup.sh && colcon build --packages-select dynamixel_sdk --base-path /home/docker/OpticalFlowSlider/ros2_ws
+
+# Source the workspace in .bashrc
+RUN echo "source /home/docker/OpticalFlowSlider/ros2_ws/install/setup.bash" >> ~/.bashrc
 
 
 ### Other potentially useful commands ###

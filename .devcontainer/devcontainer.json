@@ -22,6 +22,11 @@
 				"git.rebaseWhenSync": true
 			},
       "extensions": [
+        "ms-vscode.cpptools",
+        "ms-iot.vscode-ros",
+        "eamodio.gitlens",
+        "ms-python.python"
+
       ]
     }
   },

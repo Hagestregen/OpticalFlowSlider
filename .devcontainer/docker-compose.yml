@@ -3,6 +3,7 @@ version: '3.7'
 services:
   companion_imu:
     image: docker.mohntechnology.no/companion:OF
+    container_name: companion_OF
     privileged: true
     network_mode: host
     environment:

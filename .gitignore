@@ -7,11 +7,11 @@ venv/**
 #StoredData
 Data
 
-# devel/
-# logs/
-# build/
-# bin/
-# lib/
+devel/
+logs/
+build/
+bin/
+lib/
 
 ros2_ws/build
 ros2_ws/install

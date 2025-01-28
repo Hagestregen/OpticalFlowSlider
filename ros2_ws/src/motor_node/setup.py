@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'motor_node = motor_node.motor_node:main'
         ],
     },
 )

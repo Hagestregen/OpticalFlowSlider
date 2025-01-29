@@ -9,6 +9,8 @@ class DynamixelMXController:
     ADDR_GOAL_POSITION = 116
     ADDR_PRESENT_POSITION = 132
     ADDR_IS_MOVING = 123
+    ADDR_MIN_POSITION_LIMIT = 52
+    ADDR_MAX_POSITION_LIMIT = 48
 
     # Default Settings
     PROTOCOL_VERSION = 2.0
@@ -16,12 +18,17 @@ class DynamixelMXController:
     TORQUE_ENABLE = 1
     TORQUE_DISABLE = 0
     MOVING_STATUS_THRESHOLD = 20
-    DXL_MINIMUM_POSITION_VALUE = 1500
-    DXL_MAXIMUM_POSITION_VALUE = 3000
+    DXL_MINIMUM_POSITION_VALUE = 1000
+    DXL_MAXIMUM_POSITION_VALUE = 2000
+    DXL_MINIMUM_LIMIT_VALUE = 0
+    DXL_MAXIMUM_LIMIT_VALUE = 3000
+
 
     def __init__(self, device_name='/dev/ttyUSB0', motor_id=1, goal_positions=None):
         self.device_name = device_name
         self.motor_id = motor_id
+        self.min_limit = self.DXL_MINIMUM_LIMIT_VALUE
+        self.max_limit = self.DXL_MAXIMUM_LIMIT_VALUE
         self.port_handler = PortHandler(self.device_name)
         self.packet_handler = PacketHandler(self.PROTOCOL_VERSION)
         self.goal_positions = goal_positions or [
@@ -29,6 +36,17 @@ class DynamixelMXController:
             self.DXL_MAXIMUM_POSITION_VALUE,
         ]
         self.current_goal_index = 0
+
+    #Set the minimum and maximum position limits
+    def set_position_limits(self):
+        result, error = self.packet_handler.write4ByteTxRx(
+            self.port_handler, self.motor_id, self.ADDR_MIN_POSITION_LIMIT, self.DXL_MINIMUM_LIMIT_VALUE
+        )
+        self.check_comm_result(result, error, "Set min position limit")
+        result, error = self.packet_handler.write4ByteTxRx(
+            self.port_handler, self.motor_id, self.ADDR_MAX_POSITION_LIMIT, self.DXL_MAXIMUM_LIMIT_VALUE
+        )
+        self.check_comm_result(result, error, "Set max position limit")
 
     def open_port(self):
         if not self.port_handler.openPort():

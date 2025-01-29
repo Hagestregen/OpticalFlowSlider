@@ -15,7 +15,7 @@ class DynamixelMXController:
     TORQUE_ENABLE = 1
     TORQUE_DISABLE = 0
     MOVING_STATUS_THRESHOLD = 20
-    DXL_MINIMUM_POSITION_VALUE = 1500
+    DXL_MINIMUM_POSITION_VALUE = 0
     DXL_MAXIMUM_POSITION_VALUE = 3000
 
     def __init__(self, device_name='/dev/ttyUSB0', motor_id=1):

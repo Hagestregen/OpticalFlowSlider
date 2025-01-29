@@ -36,6 +36,7 @@ def main(args=None):
 
     controller = DynamixelMXController(goal_positions=goal_positions)
     controller.open_port()
+    controller.set_position_limits()
     controller.enable_torque()
 
     try:
@@ -43,6 +44,7 @@ def main(args=None):
         while rclpy.ok():
             print("Press any key to move to the next goal! (ESC to quit)")
             if controller.getch() == chr(0x1b):  # ESC key
+                controller.disable_torque()
                 break
             motor_node.move_and_publish()
 

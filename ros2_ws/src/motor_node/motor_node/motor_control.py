@@ -62,18 +62,21 @@ class DynamixelMXController:
             self.port_handler, self.motor_id, self.ADDR_TORQUE_ENABLE, self.TORQUE_ENABLE
         )
         self.check_comm_result(result, error, "Torque enable")
+        print("Torque enabled")
 
     def disable_torque(self):
         result, error = self.packet_handler.write1ByteTxRx(
             self.port_handler, self.motor_id, self.ADDR_TORQUE_ENABLE, self.TORQUE_DISABLE
         )
         self.check_comm_result(result, error, "Torque disable")
+        print("Torque disabled")
 
     def set_goal_position(self, position):
         result, error = self.packet_handler.write4ByteTxRx(
             self.port_handler, self.motor_id, self.ADDR_GOAL_POSITION, position
         )
         self.check_comm_result(result, error, "Set goal position")
+        print(f"[ID:{self.motor_id}] Set goal position: {position}")
 
     def get_present_position(self):
         position, result, error = self.packet_handler.read4ByteTxRx(

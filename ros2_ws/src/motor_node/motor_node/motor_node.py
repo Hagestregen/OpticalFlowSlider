@@ -11,10 +11,11 @@ class MotorPublisherNode(Node):
         super().__init__('motor_publisher')
         self.controller = controller
         self.position_pub = self.create_publisher(Int32, 'motor/present_position', 10)
-        self.goal_pub = self.create_publisher(Int32, 'motor/goal_position', 10)
+        self.goal_pub = self.create_publisher(Int32, 'motor/goal_position', 10) #Should i publish all goal positions or just the current goal position?
+        ## publish the actual position reached before moving to next position
         self.current_index = 0
         self.cleanup_called = False  # Prevent multiple cleanup calls
-        self.timer = self.create_timer(0.1, self.auto_move_and_publish)  # Timer for automatic movement
+        self.timer = self.create_timer(0.0, self.auto_move_and_publish)  # Timer for automatic movement
 
     def publish_present_position(self, present_position, goal_position):
         """Publishes the current and goal positions."""
@@ -68,7 +69,7 @@ def main(args=None):
     rclpy.init(args=args)
 
     # Define default goal positions (modify as needed)
-    goal_positions = [2000, 1000, 2500, 1500, 3000]
+    goal_positions = [2000, 1000, 2500, 1500, 3000, 0]
 
     # Validate positions
     valid_positions = [pos for pos in goal_positions if 0 <= pos <= 3000]

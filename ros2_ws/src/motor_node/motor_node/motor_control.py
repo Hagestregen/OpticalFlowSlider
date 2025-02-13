@@ -11,6 +11,9 @@ class DynamixelMXController:
     ADDR_IS_MOVING = 123
     ADDR_MIN_POSITION_LIMIT = 52
     ADDR_MAX_POSITION_LIMIT = 48
+    ADDR_PRESENT_VELOCITY = 128
+    ADDR_Profile_Acceleration = 108
+    ADDR_Profile_Velocity = 112
 
     # Default Settings
     PROTOCOL_VERSION = 2.0
@@ -21,7 +24,9 @@ class DynamixelMXController:
     DXL_MINIMUM_POSITION_VALUE = 1000
     DXL_MAXIMUM_POSITION_VALUE = 2000
     DXL_MINIMUM_LIMIT_VALUE = 0
-    DXL_MAXIMUM_LIMIT_VALUE = 3000
+    DXL_MAXIMUM_LIMIT_VALUE = 2500
+    PROFILE_ACCELERATION = 20
+    PROFILE_VELOCITY = 100
 
 
     def __init__(self, device_name='/dev/ttyUSB0', motor_id=1, goal_positions=None):
@@ -36,6 +41,18 @@ class DynamixelMXController:
             self.DXL_MAXIMUM_POSITION_VALUE,
         ]
         self.current_goal_index = 0
+
+    #Set the acceleration and velocity limits
+    
+    def set_vel_and_accel(self):
+        result, error = self.packet_handler.write4ByteTxRx(
+            self.port_handler, self.motor_id, self.ADDR_Profile_Acceleration, self.PROFILE_ACCELERATION
+        )
+        self.check_comm_result(result, error, "Set Profile Acceleration")
+        result, error = self.packet_handler.write4ByteTxRx(
+            self.port_handler, self.motor_id, self.ADDR_Profile_Velocity, self.PROFILE_VELOCITY
+        )
+        self.check_comm_result(result, error, "Set Profile Velocity")
 
     #Set the minimum and maximum position limits
     def set_position_limits(self):
@@ -76,7 +93,7 @@ class DynamixelMXController:
             self.port_handler, self.motor_id, self.ADDR_GOAL_POSITION, position
         )
         self.check_comm_result(result, error, "Set goal position")
-        print(f"[ID:{self.motor_id}] Set goal position: {position}")
+        # print(f"[ID:{self.motor_id}] Set goal position: {position}")
 
     def get_present_position(self):
         position, result, error = self.packet_handler.read4ByteTxRx(
@@ -84,6 +101,18 @@ class DynamixelMXController:
         )
         self.check_comm_result(result, error, "Read present position")
         return position
+    
+    def get_present_velocity(self):
+        velocity, result, error = self.packet_handler.read4ByteTxRx(
+            self.port_handler, self.motor_id, self.ADDR_PRESENT_VELOCITY
+        )
+        self.check_comm_result(result, error, "Read present velocity")
+        # Convert the raw unsigned value to a signed integer if necessary
+        if velocity > 0x7fffffff:
+            velocity = velocity - 4294967296
+        # print(f"Present velocity: {velocity}")
+        return velocity
+
 
     def is_moving(self):
         is_moving, result, error = self.packet_handler.read1ByteTxRx(

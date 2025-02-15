@@ -85,6 +85,12 @@ def calc_total_distance_in_m(goal_positions: list) -> float:
     return sum(differences)
 
 
+
+
+
+
 if __name__ == "__main__":
     test_rpm = 100
     print(f"{test_rpm} RPM -> {rpm_to_linear_velocity_mps(test_rpm):.4f} m/s")
+
+

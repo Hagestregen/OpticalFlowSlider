@@ -5,6 +5,7 @@ from std_msgs.msg import Int32, Float64
 from motor_control import DynamixelMXController
 from utils import rpm_to_linear_velocity_mps
 import utils as utils
+import time
 
 import sys
 
@@ -27,7 +28,7 @@ class MotorPublisherNode(Node):
         self.move_timer = self.create_timer(0.1, self.auto_move_and_publish)
 
         # Dedicated timer for publishing present velocity as fast as possible (e.g., every 0.005 sec)
-        self.velocity_timer = self.create_timer(0.1, self.publish_velocity_callback)
+        self.velocity_timer = self.create_timer(0.005, self.publish_velocity_callback)
 
     def publish_present_position(self, present_position, goal_position):
         """Publishes the current and goal positions."""
@@ -43,6 +44,7 @@ class MotorPublisherNode(Node):
     def publish_velocity_callback(self):
         """Callback to read and publish the motor's present velocity quickly."""
         velocity = self.controller.get_present_velocity()
+        # velocity = 10
         linear_velocity = rpm_to_linear_velocity_mps(velocity)
         # Optionally, log at a lower verbosity if this fires very quickly.
         # self.get_logger().debug(f"Publishing velocity: {velocity}")
@@ -52,6 +54,7 @@ class MotorPublisherNode(Node):
         """Handles movement to the next goal position and publishes position updates."""
         if self.current_index >= len(self.controller.goal_positions):
             self.get_logger().info("✅ All goal positions reached. Shutting down...")
+            time.sleep(0.5)
             self.destroy_timer(self.move_timer)
             self.destroy_timer(self.velocity_timer)
             self.cleanup_and_exit()
@@ -113,6 +116,7 @@ def main(args=None):
     controller.set_position_limits()
     controller.set_vel_and_accel()
     controller.enable_torque()
+    time.sleep(0.1)
 
     try:
         motor_node = MotorPublisherNode(controller)
@@ -122,10 +126,14 @@ def main(args=None):
         motor_node.cleanup_and_exit()
     except Exception as e:
         print(f"❌ [ERROR] {str(e)}")
+    # finally:
+    #     if not motor_node.cleanup_called:
+    #         print("🔻 Final cleanup process...")
+    #         motor_node.cleanup_and_exit()
     finally:
-        if not motor_node.cleanup_called:
-            print("🔻 Final cleanup process...")
-            motor_node.cleanup_and_exit()
+        time.sleep(0.5)
+        motor_node.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

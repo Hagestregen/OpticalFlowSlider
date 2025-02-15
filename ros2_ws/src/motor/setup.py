@@ -1,4 +1,6 @@
 from setuptools import setup
+import os
+from glob import glob
 
 package_name = 'motor'
 
@@ -12,6 +14,9 @@ setup(
         ('share/' + package_name, ['package.xml']),
         ('lib/' + package_name, [package_name+'/motor_control.py']),
         ('lib/' + package_name, [package_name+'/utils.py']),
+        # Install launch files
+        ('share/' + package_name + '/launch', glob('launch/*.launch.py')),
+
     ],
     install_requires=['setuptools'],
     zip_safe=True,

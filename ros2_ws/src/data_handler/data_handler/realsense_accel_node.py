@@ -25,7 +25,12 @@ class AccelSubscriber(Node):
         )
         # Publisher for the linear_acceleration.x value using the same QoS profile.
         self.publisher = self.create_publisher(Float64, '/linear_accel_x', qos_profile)
+        self.vel_publisher = self.create_publisher(Float64, '/realsensense_vel_x', qos_profile)
         self.get_logger().info('AccelSubscriber node has been started.')
+
+        # Variables for integration.
+        self.last_time = None   # Last timestamp (in seconds)
+        self.velocity_x = 0.0   # Integrated velocity in m/s
 
     def imu_callback(self, msg: Imu):
         # Extract the x component of the linear acceleration.
@@ -36,6 +41,26 @@ class AccelSubscriber(Node):
         out_msg = Float64()
         out_msg.data = accel_x
         self.publisher.publish(out_msg)
+
+        # Compute current time from the header.
+        # Convert sec and nanosec to a float in seconds.
+        current_time = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+        
+        if self.last_time is None:
+            dt = 0.0  # No integration on the first message.
+        else:
+            dt = current_time - self.last_time
+        
+        # Save the current time for next callback.
+        self.last_time = current_time
+        
+        # Integrate acceleration to get velocity.
+        self.velocity_x += accel_x * dt
+        
+        # Publish the integrated velocity.
+        vel_msg = Float64()
+        vel_msg.data = self.velocity_x
+        self.vel_publisher(vel_msg)
 
 def main(args=None):
     rclpy.init(args=args)

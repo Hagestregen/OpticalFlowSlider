@@ -38,7 +38,7 @@ def generate_launch_description():
 
 
     return LaunchDescription([
-        motor_node,
+        # motor_node,
         data_handler_node,
         data_handler_inertialsense_node,
         realsense_node

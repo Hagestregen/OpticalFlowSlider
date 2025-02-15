@@ -84,6 +84,9 @@ def calc_total_distance_in_m(goal_positions: list) -> float:
     differences = calc_goal_differences_in_m(goal_positions)
     return sum(differences)
 
+def raw_to_rpm(raw_value: float) -> float:
+    # Each unit corresponds to 0.229 rpm.
+    return raw_value * 0.229
 
 
 

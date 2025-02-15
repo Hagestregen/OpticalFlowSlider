@@ -7,35 +7,69 @@ from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 
 class InertialsenseAccelSubscriber(Node):
     def __init__(self):
-        super().__init__('ineritalsense_accel_subscriber')
+        super().__init__('inertialsense_accel_subscriber')
+
+        # self.accel_bias_x = 0.087
         
-        # Create a QoS profile with BEST_EFFORT reliability to match the publisher.
         qos_profile = QoSProfile(
             depth=10,
             reliability=QoSReliabilityPolicy.BEST_EFFORT,
             history=QoSHistoryPolicy.KEEP_LAST
         )
         
-        # Subscriber for the IMU data from the camera with the custom QoS profile.
+        # Subscribe to IMU data.
         self.subscription = self.create_subscription(
             Imu,
             '/inertialsense/imu',
             self.imu_callback,
             qos_profile
         )
-        # Publisher for the linear_acceleration.x value using the same QoS profile.
-        self.publisher = self.create_publisher(Float64, '/inertialsense_accel_x', qos_profile)
+        # Publisher for the instantaneous acceleration x.
+        self.accel_pub = self.create_publisher(Float64, '/inertialsense_accel_x', qos_profile)
+        # Publisher for the integrated velocity in x.
+        self.velocity_pub = self.create_publisher(Float64, '/inertialsense_velocity_x', qos_profile)
+        
         self.get_logger().info('AccelSubscriber node has been started.')
 
+        # Variables for integration.
+        self.last_time = None   # Last timestamp (in seconds)
+        self.velocity_x = 0.0   # Integrated velocity in m/s
+
     def imu_callback(self, msg: Imu):
-        # Extract the x component of the linear acceleration.
+        # Extract the x component of linear acceleration.
         accel_x = msg.linear_acceleration.x
-        # self.get_logger().info(f'Received linear_acceleration.x: {accel_x}')
+        # raw_accel_x = msg.linear_acceleration.x
+        # accel_x = raw_accel_x - self.accel_bias_x
         
-        # Create and publish the Float64 message.
-        out_msg = Float64()
-        out_msg.data = accel_x
-        self.publisher.publish(out_msg)
+        # Publish the raw acceleration.
+        accel_msg = Float64()
+        accel_msg.data = accel_x
+        self.accel_pub.publish(accel_msg)
+        
+        # Compute current time from the header.
+        # Convert sec and nanosec to a float in seconds.
+        current_time = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+        
+        if self.last_time is None:
+            dt = 0.0  # No integration on the first message.
+        else:
+            dt = current_time - self.last_time
+        
+        # Save the current time for next callback.
+        self.last_time = current_time
+        
+        # Integrate acceleration to get velocity.
+        self.velocity_x += accel_x * dt
+        
+        # Publish the integrated velocity.
+        vel_msg = Float64()
+        vel_msg.data = self.velocity_x
+        self.velocity_pub.publish(vel_msg)
+        
+        # Optionally, log the integrated velocity.
+        # self.get_logger().info(f'Integrated velocity x: {self.velocity_x:.3f} m/s')
+
+ 
 
 def main(args=None):
     rclpy.init(args=args)

@@ -28,7 +28,7 @@ class MotorPublisherNode(Node):
         self.move_timer = self.create_timer(0.1, self.auto_move_and_publish)
 
         # Dedicated timer for publishing present velocity as fast as possible (e.g., every 0.005 sec)
-        self.velocity_timer = self.create_timer(0.005, self.publish_velocity_callback)
+        self.velocity_timer = self.create_timer(0.001, self.publish_velocity_callback)
 
     def publish_present_position(self, present_position, goal_position):
         """Publishes the current and goal positions."""
@@ -43,11 +43,9 @@ class MotorPublisherNode(Node):
 
     def publish_velocity_callback(self):
         """Callback to read and publish the motor's present velocity quickly."""
-        velocity = self.controller.get_present_velocity()
-        # velocity = 10
-        linear_velocity = rpm_to_linear_velocity_mps(velocity)
-        # Optionally, log at a lower verbosity if this fires very quickly.
-        # self.get_logger().debug(f"Publishing velocity: {velocity}")
+        raw_velocity = self.controller.get_present_velocity()
+        rpm = utils.raw_to_rpm(raw_velocity)
+        linear_velocity = rpm_to_linear_velocity_mps(rpm)
         self.publish_present_velocity(linear_velocity)
 
     def auto_move_and_publish(self):
@@ -65,7 +63,9 @@ class MotorPublisherNode(Node):
             except Exception as e:
                 self.get_logger().warn(f"⚠️ [WARNING] Failed to close port: {e}")
             # self.cleanup_and_exit()
-            rclpy.shutdown()
+            self.destroy_node()       # Destroy this node.
+            rclpy.shutdown()          # Shutdown the ROS context.
+            sys.exit(0) 
             return
 
         goal_position = self.controller.goal_positions[self.current_index]
@@ -129,21 +129,21 @@ def main(args=None):
     try:
         motor_node = MotorPublisherNode(controller)
         rclpy.spin(motor_node)
-    # except KeyboardInterrupt:
-    #     print("\n🛑 [CTRL+C] Interrupt received. Cleaning up...")
-    #     motor_node.cleanup_and_exit()
+    except KeyboardInterrupt:
+        print("\n🛑 [CTRL+C] Interrupt received. Cleaning up...")
+        motor_node.cleanup_and_exit()
     # except Exception as e:
     #     print(f"❌ [ERROR] {str(e)}")
     # # finally:
     # #     if not motor_node.cleanup_called:
     # #         print("🔻 Final cleanup process...")
     # #         motor_node.cleanup_and_exit()
-    finally:
-        time.sleep(0.5)
-        print("\n🛑 in finally")
-        motor_node.destroy_node()
-        print("\n🛑 destroyed node")
-        rclpy.shutdown()
+    # finally:
+    #     time.sleep(0.5)
+    #     print("\n🛑 in finally")
+    #     motor_node.destroy_node()
+    #     print("\n🛑 destroyed node")
+    #     rclpy.shutdown()
         
 
 if __name__ == '__main__':

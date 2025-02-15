@@ -20,6 +20,21 @@ def generate_launch_description():
         output='screen'
     )
 
+    data_handler_inertialsense_node = launch_ros.actions.Node(
+        package='data_handler',
+        executable='inertialsense_accel_node',
+        name='inertialsense_accel_node',
+        output='screen'
+    )
+
+    # Start realsense node
+    realsense_node = ExecuteProcess(
+        cmd=[
+            'ros2', 'launch', 'realsense2_camera', 'rs_launch.py', 'enable_accel:=true'
+        ],
+        output='screen'
+    )
+
     # Start recording the specified topics with ros2 bag record
     bag_record = ExecuteProcess(
         cmd=[
@@ -28,6 +43,8 @@ def generate_launch_description():
             '/events/read_split',
             '/linear_accel_x',
             '/motor/present_velocity',
+            '/inertialsense_velocity_x',
+            '/realsensense_vel_x'
             # '/parameter_events',
             # '/pimu_dvel_x',
             # '/rosout'
@@ -36,8 +53,10 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        realsense_node,
         motor_node,
         data_handler_node,
+        data_handler_inertialsense_node,
         bag_record,
         
     ])

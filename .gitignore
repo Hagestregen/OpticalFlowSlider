@@ -17,4 +17,12 @@ ros2_ws/build
 ros2_ws/install
 ros2_ws/log
 
-ros2_ws/src/motor_node/motor_node/__pycache__
+ros2_ws/src/motor/motor/__pycache__
+ros2_ws/src/data_handler/data_handler/__pycache__
+ros2_ws/src/optical_flow/optical_flow/__pycache__
+ros2_ws/src/controller/controller/__pycache__
+ros2_ws/__pycache__
+
+ros2_ws/my_rosbag
+
+rosbags

@@ -133,6 +133,7 @@ class DynamixelMXController:
 
     def close_port(self):
         self.port_handler.closePort()
+        print("Port closed")
 
     def check_comm_result(self, result, error, action):
         if result != 0:

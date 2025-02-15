@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'optical_flow_node'
+package_name = 'controller'
 
 setup(
     name=package_name,

@@ -56,8 +56,16 @@ class MotorPublisherNode(Node):
             self.get_logger().info("✅ All goal positions reached. Shutting down...")
             time.sleep(0.5)
             self.destroy_timer(self.move_timer)
+            self.get_logger().info("Closed first timer")
             self.destroy_timer(self.velocity_timer)
-            self.cleanup_and_exit()
+            self.get_logger().info("Closed second timer")
+            self.controller.disable_torque()
+            try:
+                self.controller.close_port()
+            except Exception as e:
+                self.get_logger().warn(f"⚠️ [WARNING] Failed to close port: {e}")
+            # self.cleanup_and_exit()
+            rclpy.shutdown()
             return
 
         goal_position = self.controller.goal_positions[self.current_index]
@@ -121,19 +129,22 @@ def main(args=None):
     try:
         motor_node = MotorPublisherNode(controller)
         rclpy.spin(motor_node)
-    except KeyboardInterrupt:
-        print("\n🛑 [CTRL+C] Interrupt received. Cleaning up...")
-        motor_node.cleanup_and_exit()
-    except Exception as e:
-        print(f"❌ [ERROR] {str(e)}")
-    # finally:
-    #     if not motor_node.cleanup_called:
-    #         print("🔻 Final cleanup process...")
-    #         motor_node.cleanup_and_exit()
+    # except KeyboardInterrupt:
+    #     print("\n🛑 [CTRL+C] Interrupt received. Cleaning up...")
+    #     motor_node.cleanup_and_exit()
+    # except Exception as e:
+    #     print(f"❌ [ERROR] {str(e)}")
+    # # finally:
+    # #     if not motor_node.cleanup_called:
+    # #         print("🔻 Final cleanup process...")
+    # #         motor_node.cleanup_and_exit()
     finally:
         time.sleep(0.5)
+        print("\n🛑 in finally")
         motor_node.destroy_node()
+        print("\n🛑 destroyed node")
         rclpy.shutdown()
+        
 
 if __name__ == '__main__':
     main()

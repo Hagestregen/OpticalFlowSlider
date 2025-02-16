@@ -41,10 +41,10 @@ def generate_launch_description():
             'ros2', 'bag', 'record', '-o', 'my_rosbag',
             '/camera/camera/color/image_raw',
             '/events/read_split',
-            '/linear_accel_x',
+            '/realsense_accel_x',
             '/motor/present_velocity',
             '/inertialsense_velocity_x',
-            '/realsensense_vel_x'
+            '/realsense_vel_x'
             # '/parameter_events',
             # '/pimu_dvel_x',
             # '/rosout'

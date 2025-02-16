@@ -24,18 +24,26 @@ class AccelSubscriber(Node):
             qos_profile
         )
         # Publisher for the linear_acceleration.x value using the same QoS profile.
-        self.publisher = self.create_publisher(Float64, '/linear_accel_x', qos_profile)
-        self.vel_publisher = self.create_publisher(Float64, '/realsensense_vel_x', qos_profile)
+        self.publisher = self.create_publisher(Float64, '/realsense_accel_x', qos_profile)
+        self.vel_publisher = self.create_publisher(Float64, '/realsense_vel_x', qos_profile)
         self.get_logger().info('AccelSubscriber node has been started.')
 
         # Variables for integration.
         self.last_time = None   # Last timestamp (in seconds)
         self.velocity_x = 0.0   # Integrated velocity in m/s
 
+        # To remove the bias, subtract 0.033.
+        self.bias = 0.033  # m/s²
+
     def imu_callback(self, msg: Imu):
         # Extract the x component of the linear acceleration.
-        accel_x = msg.linear_acceleration.x
+        raw_accel_x = msg.linear_acceleration.x
+
+        #make realsense imu x direction same as inertialsense
+        inverted_accel = -raw_accel_x
         # self.get_logger().info(f'Received linear_acceleration.x: {accel_x}')
+
+        accel_x = inverted_accel - self.bias #remove bias from the accel data
         
         # Create and publish the Float64 message.
         out_msg = Float64()
@@ -60,7 +68,7 @@ class AccelSubscriber(Node):
         # Publish the integrated velocity.
         vel_msg = Float64()
         vel_msg.data = self.velocity_x
-        self.vel_publisher(vel_msg)
+        self.vel_publisher.publish(vel_msg)
 
 def main(args=None):
     rclpy.init(args=args)

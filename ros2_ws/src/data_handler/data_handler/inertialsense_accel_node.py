@@ -35,11 +35,14 @@ class InertialsenseAccelSubscriber(Node):
         self.last_time = None   # Last timestamp (in seconds)
         self.velocity_x = 0.0   # Integrated velocity in m/s
 
+        # To remove the bias, subtract 0.033.
+        self.bias = 0.0815   # m/s²
+
     def imu_callback(self, msg: Imu):
         # Extract the x component of linear acceleration.
-        accel_x = msg.linear_acceleration.x
+        raw_accel_x = msg.linear_acceleration.x
         # raw_accel_x = msg.linear_acceleration.x
-        # accel_x = raw_accel_x - self.accel_bias_x
+        accel_x = raw_accel_x - self.bias
         
         # Publish the raw acceleration.
         accel_msg = Float64()

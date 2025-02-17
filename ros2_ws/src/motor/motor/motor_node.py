@@ -124,7 +124,7 @@ def main(args=None):
     controller.set_position_limits()
     controller.set_vel_and_accel()
     controller.enable_torque()
-    time.sleep(0.1)
+    time.sleep(1)
 
     try:
         motor_node = MotorPublisherNode(controller)

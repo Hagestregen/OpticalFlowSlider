@@ -54,9 +54,10 @@ def generate_launch_description():
 
     return LaunchDescription([
         realsense_node,
-        motor_node,
         data_handler_node,
         data_handler_inertialsense_node,
         bag_record,
+        motor_node,
+        
         
     ])

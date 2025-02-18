@@ -20,6 +20,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'lucas_kanade_node = optical_flow.lucas_kanade_node:main',
+            'raft_node = optical_flow.raft_node:main',
+
         ],
     },
 )

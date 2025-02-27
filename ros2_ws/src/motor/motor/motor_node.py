@@ -105,7 +105,7 @@ def main(args=None):
 
     # Define default goal positions (modify as needed)
     goal_positions = [2000, 500, 2500, 1000, 2500, 0]
-    # goal_positions = [2000]  # Single goal position
+    # goal_positions = [0]  # Single goal position
     distances = utils.calc_goal_differences_in_m(goal_positions)
     total_distance = utils.calc_total_distance_in_m(goal_positions)
 

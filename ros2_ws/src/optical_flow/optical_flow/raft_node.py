@@ -1,232 +1,3 @@
-# #!/usr/bin/env python3
-# import rclpy
-# from rclpy.node import Node
-# from sensor_msgs.msg import Image
-# from cv_bridge import CvBridge
-# import cv2
-# import numpy as np
-# import torch
-# import torchvision.transforms.functional as F
-
-# # Import RAFT modules from torchvision for the small variant.
-# from torchvision.models.optical_flow import raft_small, Raft_Small_Weights
-# from torchvision.utils import flow_to_image
-
-# def pad_to_multiple(img, multiple=8):
-#     """
-#     Pads a tensor image so that its height and width are divisible by 'multiple'.
-    
-#     Args:
-#         img (torch.Tensor): Image tensor of shape [1, 3, H, W].
-#         multiple (int): The value by which H and W should be divisible.
-        
-#     Returns:
-#         padded_img (torch.Tensor): The padded image.
-#         padding (tuple): The padding applied (left, top, right, bottom).
-#     """
-#     _, _, H, W = img.shape
-#     pad_h = (multiple - (H % multiple)) % multiple
-#     pad_w = (multiple - (W % multiple)) % multiple
-#     pad_top = pad_h // 2
-#     pad_bottom = pad_h - pad_top
-#     pad_left = pad_w // 2
-#     pad_right = pad_w - pad_left
-#     padding = (pad_left, pad_top, pad_right, pad_bottom)
-#     padded_img = F.pad(img, padding)
-#     return padded_img, padding
-
-# class RaftOpticalFlowNode(Node):
-#     def __init__(self):
-#         super().__init__('raft_optical_flow_node')
-
-#         # Create a QoS profile.
-#         qos_profile = rclpy.qos.QoSProfile(
-#             depth=10,
-#             reliability=rclpy.qos.QoSReliabilityPolicy.BEST_EFFORT,
-#             history=rclpy.qos.QoSHistoryPolicy.KEEP_LAST
-#         )
-
-#         # Subscribe to the color image topic.
-#         self.subscription = self.create_subscription(
-#             Image,
-#             '/camera/camera/color/image_raw',
-#             self.image_callback,
-#             qos_profile
-#         )
-#         self.bridge = CvBridge()
-#         self.prev_tensor = None  # To store the previous frame as a tensor.
-#         self.prev_time = None    # To store the previous frame's timestamp.
-
-#         # Load the RAFT model using the small variant.
-#         self.get_logger().info("Loading RAFT (small) model...")
-#         weights = Raft_Small_Weights.DEFAULT
-#         self.transforms = weights.transforms()  # Preprocessing transforms.
-#         self.model = raft_small(weights=weights, progress=False)
-        
-#         # Set device to GPU if available.
-#         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-#         self.model = self.model.to(self.device)
-#         self.model.eval()
-#         self.get_logger().info("RAFT Optical Flow Node (small) started on device: " + self.device)
-
-#         # Optional conversion factor: if you know 1 pixel equals a given number of meters.
-#         self.conv_factor = None  # e.g., set to 0.001309 for physical units in m/s
-
-#     # def image_callback(self, msg: Image):
-#     #     try:
-#     #         # Convert ROS image message to an OpenCV BGR image.
-#     #         cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-#     #     except Exception as e:
-#     #         self.get_logger().error(f"Error converting image: {e}")
-#     #         return
-
-#     #     # Get the current timestamp (in seconds) from the header.
-#     #     current_time = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
-
-#     #     # Convert from BGR to RGB and normalize to [0, 1].
-#     #     rgb_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
-#     #     rgb_image = np.float32(rgb_image) / 255.0
-
-#     #     # Convert the numpy image into a PyTorch tensor with shape [1, 3, H, W].
-#     #     img_tensor = torch.from_numpy(rgb_image).permute(2, 0, 1).unsqueeze(0).to(self.device)
-
-#     #     # For the first frame, just store the image and timestamp.
-#     #     if self.prev_tensor is None:
-#     #         self.prev_tensor = img_tensor
-#     #         self.prev_time = current_time
-#     #         return
-
-#     #     # Compute time difference between frames.
-#     #     dt = current_time - self.prev_time
-#     #     if dt <= 0:
-#     #         dt = 1e-3
-#     #     self.prev_time = current_time
-
-#     #     # Preprocess the image pair using the RAFT transforms.
-#     #     img1, img2 = self.transforms(self.prev_tensor, img_tensor)
-
-#     #     # Pad both images so their dimensions are divisible by 8.
-#     #     img1, _ = pad_to_multiple(img1, multiple=8)
-#     #     img2, _ = pad_to_multiple(img2, multiple=8)
-
-#     #     # Compute optical flow using the RAFT model.
-#     #     with torch.no_grad():
-#     #         flows = self.model(img1, img2)
-#     #     flow = flows[-1][0].cpu()  # shape: [2, H, W] in pixel displacement
-
-#     #     # Compute velocity vectors in pixels/second.
-#     #     velocity_pixels = flow / dt
-        
-#     #     # Optionally, convert to physical units if conv_factor is set.
-#     #     if self.conv_factor is not None:
-#     #         velocity_physical = velocity_pixels * self.conv_factor
-#     #     else:
-#     #         velocity_physical = velocity_pixels
-
-#     #     # Compute the average velocity vector over the image.
-#     #     avg_velocity = velocity_physical.mean(dim=(1, 2))
-#     #     self.get_logger().info(
-#     #         f"Avg velocity: dx: {avg_velocity[0]:.2f}, dy: {avg_velocity[1]:.2f} " +
-#     #         ("m/s" if self.conv_factor is not None else "pixels/s")
-#     #     )
-
-#     #     # Visualize the optical flow.
-#     #     flow_img = flow_to_image(flow.unsqueeze(0))[0].cpu().numpy()
-#     #     flow_img = flow_img.transpose(1, 2, 0)  # Convert from (3, H, W) to (H, W, 3)
-#     #     flow_img = np.ascontiguousarray(flow_img, dtype=np.uint8)
-#     #     # cv2.imshow("RAFT Optical Flow (small)", flow_img)
-#     #     # cv2.waitKey(1)
-
-#     #     # Update previous frame.
-#     #     self.prev_tensor = img_tensor
-
-#     def image_callback(self, msg: Image):
-#         try:
-#             cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-#         except Exception as e:
-#             self.get_logger().error(f"Error converting image: {e}")
-#             return
-
-#         # Optionally downsample image (e.g., half size) to speed up processing.
-#         cv_image = cv2.resize(cv_image, (cv_image.shape[1]//2, cv_image.shape[0]//2))
-        
-#         # Continue with processing as before...
-#         rgb_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
-#         rgb_image = np.float32(rgb_image) / 255.0
-#         img_tensor = torch.from_numpy(rgb_image).permute(2, 0, 1).unsqueeze(0).to(self.device)
-
-#         # # Implement frame skipping: only process every nth frame.
-#         # self.frame_count = getattr(self, 'frame_count', 0) + 1
-#         # if self.frame_count % 2 != 0:  # Process every second frame
-#         #     self.prev_tensor = img_tensor
-#         #     self.prev_time = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
-#         #     return
-
-#         # Compute dt using the timestamp
-#         current_time = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
-#         if self.prev_time is None:
-#             dt = 1e-3
-#         else:
-#             dt = current_time - self.prev_time
-#         self.prev_time = current_time
-
-#         # Preprocess and compute flow as before...
-#         img1, img2 = self.transforms(self.prev_tensor, img_tensor)
-#         img1, _ = pad_to_multiple(img1, multiple=8)
-#         img2, _ = pad_to_multiple(img2, multiple=8)
-
-#         with torch.no_grad():
-#             flows = self.model(img1, img2)
-#         flow = flows[-1][0].cpu()
-
-#         # Optional conversion factor: meters per pixel (derived from calibration)
-#         self.conv_factor = 0.000566  
-
-#         # ... (after computing the flow and dividing by dt)
-#         velocity_pixels = flow / dt  # velocity in pixels/second
-
-#         # Convert to physical units (meters per second)
-#         velocity_mps = velocity_pixels * self.conv_factor
-
-#         # Compute average velocity over the image.
-#         avg_velocity = velocity_mps.mean(dim=(1, 2))
-#         self.get_logger().info(
-#             f"Avg velocity: dx: {avg_velocity[0]:.2f}, dy: {avg_velocity[1]:.2f} m/s"
-# )
-
-
-#         # # Compute velocities...
-#         # velocity_pixels = flow / dt
-#         # avg_velocity = velocity_pixels.mean(dim=(1, 2))
-#         # self.get_logger().info(
-#         #     f"Avg velocity: dx: {avg_velocity[0]:.2f}, dy: {avg_velocity[1]:.2f} pixels/s"
-#         # )
-
-#         # flow_img = flow_to_image(flow.unsqueeze(0))[0].cpu().numpy()
-#         # flow_img = flow_img.transpose(1, 2, 0)
-#         # flow_img = np.ascontiguousarray(flow_img, dtype=np.uint8)
-#         # cv2.imshow("RAFT Optical Flow (small)", flow_img)
-#         # cv2.waitKey(1)
-
-#         self.prev_tensor = img_tensor
-
-
-# def main(args=None):
-#     rclpy.init(args=args)
-#     node = RaftOpticalFlowNode()
-#     try:
-#         rclpy.spin(node)
-#     except KeyboardInterrupt:
-#         node.get_logger().info("Keyboard interrupt, shutting down.")
-#     finally:
-#         node.destroy_node()
-#         rclpy.shutdown()
-#         cv2.destroyAllWindows()
-
-# if __name__ == '__main__':
-#     main()
-
-#!/usr/bin/env python3
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
@@ -237,6 +8,7 @@ import numpy as np
 import torch
 import torchvision.transforms.functional as F
 from PIL import Image as PILImage
+from std_msgs.msg import Float64
 
 # Import RAFT modules from torchvision for the small variant.
 from torchvision.models.optical_flow import raft_small, Raft_Small_Weights
@@ -283,6 +55,8 @@ class RaftOpticalFlowNode(Node):
             self.image_callback,
             qos_profile
         )
+
+        self.velocity_publisher = self.create_publisher(Float64, '/optical_flow/raft_velocity', qos_profile)
         self.bridge = CvBridge()
 
         self.prev_image = None   # Store the previous frame as a PIL image
@@ -311,11 +85,11 @@ class RaftOpticalFlowNode(Node):
             self.get_logger().error(f"Error converting image: {e}")
             return
 
-        # (Optional) Downsample to half resolution to speed up RAFT inference.
-        cv_image = cv2.resize(
-            cv_image, 
-            (cv_image.shape[1] // 2, cv_image.shape[0] // 2)
-        )
+        # # (Optional) Downsample to half resolution to speed up RAFT inference.
+        # cv_image = cv2.resize(
+        #     cv_image, 
+        #     (cv_image.shape[1] // 2, cv_image.shape[0] // 2)
+        # )
 
         # Convert from BGR to RGB, then to uint8 for PIL image.
         rgb_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
@@ -383,10 +157,14 @@ class RaftOpticalFlowNode(Node):
         # Average velocity in the top half of the image:
         avg_velocity_top = top_half.mean(dim=(1, 2))  # shape [2]
         # dx, dy in top half
-        self.get_logger().info(
-            f"Avg velocity (TOP HALF): dx: {avg_velocity_top[0]:.3f}, "
-            f"dy: {avg_velocity_top[1]:.3f} m/s"
-        )
+        # self.get_logger().info(
+        #     f"Avg velocity (TOP HALF): dx: {avg_velocity_top[0]:.3f}, "
+        #     f"dy: {avg_velocity_top[1]:.3f} m/s"
+        # )
+
+        velocity_msg = Float64()
+        velocity_msg.data = float(avg_velocity_top[0])
+        self.velocity_publisher.publish(velocity_msg)
 
         # If you still want the overall average across the entire frame:
         # avg_velocity_full = velocity_mps.mean(dim=(1, 2))

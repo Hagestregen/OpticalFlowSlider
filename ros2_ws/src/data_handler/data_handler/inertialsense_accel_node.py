@@ -27,13 +27,15 @@ class InertialsenseAccelSubscriber(Node):
         # Publisher for the instantaneous acceleration x.
         self.accel_pub = self.create_publisher(Float64, '/inertialsense_accel_x', qos_profile)
         # Publisher for the integrated velocity in x.
-        self.velocity_pub = self.create_publisher(Float64, '/inertialsense_velocity_x', qos_profile)
+        self.velocity_pub = self.create_publisher(Float64, '/inertialsense/velocity_x', qos_profile)
+        self.velocity_no_bias_pub = self.create_publisher(Float64, '/inertialsense/velocity_no_bias', qos_profile)
         
         self.get_logger().info('AccelSubscriber node has been started.')
 
         # Variables for integration.
         self.last_time = None   # Last timestamp (in seconds)
         self.velocity_x = 0.0   # Integrated velocity in m/s
+        self.velocity_no_bias_x = 0.0
 
         # To remove the bias, subtract 0.033.
         self.bias = 0.0815   # m/s²
@@ -43,6 +45,7 @@ class InertialsenseAccelSubscriber(Node):
         raw_accel_x = msg.linear_acceleration.x
         # raw_accel_x = msg.linear_acceleration.x
         accel_x = raw_accel_x - self.bias
+        
         
         # Publish the raw acceleration.
         accel_msg = Float64()
@@ -64,10 +67,16 @@ class InertialsenseAccelSubscriber(Node):
         # Integrate acceleration to get velocity.
         self.velocity_x += accel_x * dt
         
+        self.velocity_no_bias_x += raw_accel_x * dt
+        
         # Publish the integrated velocity.
         vel_msg = Float64()
         vel_msg.data = self.velocity_x
         self.velocity_pub.publish(vel_msg)
+        
+        vel_no_bias_msg = Float64()
+        vel_no_bias_msg.data = self.velocity_no_bias_x
+        self.velocity_no_bias_pub.publish(vel_no_bias_msg)
         
         # Optionally, log the integrated velocity.
         # self.get_logger().info(f'Integrated velocity x: {self.velocity_x:.3f} m/s')

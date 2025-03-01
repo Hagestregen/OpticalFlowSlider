@@ -20,6 +20,8 @@ class MotorPublisherNode(Node):
         self.position_pub = self.create_publisher(Int32, 'motor/present_position', 10)
         self.velocity_pub = self.create_publisher(Float64, 'motor/present_velocity', 10)
         self.goal_pub = self.create_publisher(Int32, 'motor/goal_position', 10)
+        
+        time.sleep(0.2)
 
         self.current_index = 0
         self.cleanup_called = False  # Prevent multiple cleanup calls
@@ -104,7 +106,8 @@ def main(args=None):
     rclpy.init(args=args)
 
     # Define default goal positions (modify as needed)
-    goal_positions = [2000, 500, 2500, 1000, 2500, 0]
+    # goal_positions = [2000, 500, 2500, 1000, 2500, 0]
+    goal_positions = [750, 2000, 200, 1000, 2500, 0]
     # goal_positions = [0]  # Single goal position
     distances = utils.calc_goal_differences_in_m(goal_positions)
     total_distance = utils.calc_total_distance_in_m(goal_positions)
@@ -124,7 +127,7 @@ def main(args=None):
     controller.set_position_limits()
     controller.set_vel_and_accel()
     controller.enable_torque()
-    time.sleep(2)
+    time.sleep(1)
 
     try:
         motor_node = MotorPublisherNode(controller)
@@ -132,18 +135,6 @@ def main(args=None):
     except KeyboardInterrupt:
         print("\n🛑 [CTRL+C] Interrupt received. Cleaning up...")
         motor_node.cleanup_and_exit()
-    # except Exception as e:
-    #     print(f"❌ [ERROR] {str(e)}")
-    # # finally:
-    # #     if not motor_node.cleanup_called:
-    # #         print("🔻 Final cleanup process...")
-    # #         motor_node.cleanup_and_exit()
-    # finally:
-    #     time.sleep(0.5)
-    #     print("\n🛑 in finally")
-    #     motor_node.destroy_node()
-    #     print("\n🛑 destroyed node")
-    #     rclpy.shutdown()
         
 
 if __name__ == '__main__':

@@ -38,9 +38,16 @@ class KalmanFilterNode(Node):
         )
         
         # Subscribe to the optical flow velocity topic (with header).
+        # self.flow_sub = self.create_subscription(
+        #     Vector3Stamped,
+        #     '/optical_flow/LK_velocity',
+        #     self.flow_callback,
+        #     qos_profile
+        # )
+        
         self.flow_sub = self.create_subscription(
             Vector3Stamped,
-            '/optical_flow/LK_velocity',
+            '/optical_flow/LFN_velocity',
             self.flow_callback,
             qos_profile
         )
@@ -68,8 +75,8 @@ class KalmanFilterNode(Node):
         """
         acceleration = msg.linear_acceleration.x
         imu_time = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
-        
-        # Compute dt from the previous IMU message.
+        # dt = self.kf.dt_default if self.last_imu_time is None else max(imu_time - self.last_imu_time, 1e-3)
+        # # Compute dt from the previous IMU message.
         if self.last_imu_time is None:
             dt = self.kf.dt_default
         else:
@@ -159,10 +166,27 @@ class KalmanFilterNode(Node):
         # (Optionally) update the state_history with the new filter state.
         # For simplicity, we leave the buffer as is.
         # You might also want to remove entries older than a threshold.
+        self.prune_state_history()
         self.publish_state()
 
     def timer_callback(self):
         self.publish_state()
+        
+    def prune_state_history(self):
+        """
+        Remove old entries from the state history that are older than a given threshold.
+        This helps keep the buffer size manageable.
+        """
+        if self.last_imu_time is None:
+            return  # nothing to prune yet
+
+        threshold = 2.0  # seconds; adjust as needed
+        # Keep only entries where the time difference is less than the threshold.
+        self.state_history = [
+            entry for entry in self.state_history
+            if self.last_imu_time - entry['time'] < threshold
+        ]
+
 
     def publish_state(self):
         state = self.kf.get_state()
@@ -191,116 +215,4 @@ if __name__ == '__main__':
     main()
 
 
-# import rclpy
-# from rclpy.node import Node
-# from std_msgs.msg import Float64, Float32MultiArray, Int32
-# from geometry_msgs.msg import Vector3Stamped
-# from sensor_msgs.msg import Imu
-# from kalman_filter import KalmanFilter
-# from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 
-# class KalmanFilterNode(Node):
-#     def __init__(self):
-#         # Start the node and give it a name
-#         super().__init__('kalman_filter_node')
-        
-#         # Create a QoS profile for images.
-#         qos_profile = QoSProfile(
-#             depth=10,
-#             reliability=QoSReliabilityPolicy.BEST_EFFORT,
-#             history=QoSHistoryPolicy.KEEP_LAST
-#         )
-        
-#         # Set up the Kalman Filter with our guessing rules
-#         self.kf = KalmanFilter(dt=0.01, sigma_a=0.1, sigma_flow=0.05, sigma_b=0.001)
-        
-#         # Listen to the IMU for acceleration data
-#         self.imu_sub = self.create_subscription(
-#             Imu,                  
-#             '/inertialsense/imu',      
-#             self.imu_callback,        
-#             10)                       
-        
-#         # Listen to the camera for velocity data
-#         # self.flow_sub = self.create_subscription( # LFN velocity
-#         #     Float64,
-#         #     '/optical_flow/LFN_velocity',
-#         #     self.flow_callback,
-#         #     10)
-        
-#         self.flow_sub = self.create_subscription( #Lucas-Kanade velocity
-#             Vector3Stamped,
-#             '/optical_flow/LK_velocity',
-#             self.flow_callback,
-#             qos_profile)
-        
-#         # self.flow_sub = self.create_subscription( # Encoder velocity
-#         #     Int32,
-#         #     'motor/present_velocity',
-#         #     self.flow_callback,
-#         #     10)
-        
-#         # Publisher for full state [position, velocity, bias]
-#         self.state_pub = self.create_publisher(
-#             Float32MultiArray,        
-#             '/kalman_filter/state',   
-#             10)
-        
-#         # Publisher for velocity only
-#         self.state_vel_pub = self.create_publisher(
-#             Float64,
-#             '/kalman_filter/velocity',
-#             10)
-        
-#         # Set a timer to keep shouting our guess every 0.01 seconds
-#         self.timer = self.create_timer(0.01, self.timer_callback)
-        
-#         # Let us know the node’s ready
-#         self.get_logger().info('Kalman Filter Node is up and running!')
-
-#     def imu_callback(self, msg):
-#         # When the IMU talks, we guess ahead
-#         acceleration = msg.linear_acceleration.x
-#         self.kf.predict(acceleration)
-
-#     def flow_callback(self, msg):
-#         # When the camera talks, we check and tweak our guess
-#         # self.get_logger().info(f"flow callback with data: {msg.data}")
-#         velocity = msg.vector.x
-#         self.kf.update(velocity)
-#         self.publish_state()
-#         # self.get_logger().info(f"x hat is: {self.kf.x_hat}")
-
-#     def timer_callback(self):
-#         # Every 0.01 seconds, shout our latest guess
-#         self.publish_state()
-
-#     def publish_state(self):
-#         # Get the full state: [position, velocity, bias]
-#         state = self.kf.get_state()
-        
-#         # Publish the full state
-#         state_msg = Float32MultiArray()
-#         state_msg.data = state.tolist()
-#         self.state_pub.publish(state_msg)
-        
-#         # Extract and publish the velocity (assumed to be at index 1)
-#         velocity_msg = Float64()
-#         velocity_msg.data = state[1]
-#         self.state_vel_pub.publish(velocity_msg)
-        
-#         self.get_logger().debug(f'Published state: {state_msg.data} and velocity: {velocity_msg.data}')
-
-# def main(args=None):
-#     rclpy.init(args=args)
-#     node = KalmanFilterNode()
-#     try:
-#         rclpy.spin(node)
-#     except KeyboardInterrupt:
-#         pass
-#     finally:
-#         node.destroy_node()
-#         rclpy.shutdown()
-
-# if __name__ == '__main__':
-#     main()

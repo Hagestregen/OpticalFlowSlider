@@ -29,7 +29,8 @@ class LucasKanadeNode(Node):
         )
 
         # Publisher for the computed velocity vector with header.
-        self.velocity_pub = self.create_publisher(Vector3Stamped, '/optical_flow/LK_velocity', qos_profile)
+        self.velocity_pub = self.create_publisher(Vector3Stamped, '/optical_flow/LK_velocity', qos_profile) #Lucas-Kanade
+        
 
         self.bridge = CvBridge()
         self.prev_gray = None

@@ -5,7 +5,7 @@ from launch import LaunchDescription
 from launch.actions import ExecuteProcess
 import launch_ros.actions
 
-def get_unique_bag_folder(base_dir="my_rosbag", base_name="KalmanFilter_LK_sigma_b_0-1_sigma_a_0-1_with_oosm"):
+def get_unique_bag_folder(base_dir="my_rosbag", base_name="KalmanFilter_LFN_sigma_b_0-1_sigma_a_0-1_with_oosm"):
     """
     Generate a unique folder path under base_dir with the base_name.
     If base_dir/base_name exists, increment a counter until a new folder name is found.
@@ -43,25 +43,11 @@ def generate_launch_description():
         name='realsense_accel_node',
         output='screen'
     )
+    
     data_handler_inertialsense_node = launch_ros.actions.Node(
         package='data_handler',
         executable='inertialsense_accel_node',
         name='inertialsense_accel_node',
-        output='screen'
-    )
-
-    # Launch the optical flow node.
-    optical_flow_node_kanade = launch_ros.actions.Node(
-        package='optical_flow',
-        executable='lucas_kanade_node',
-        name='lucas_kanade_node',
-        output='screen'
-    )
-    
-    optical_flow_node_raft = launch_ros.actions.Node(
-        package='optical_flow',
-        executable='raft_direct_node',
-        name='raft_direct_node',
         output='screen'
     )
     
@@ -86,7 +72,7 @@ def generate_launch_description():
         'enable_infra2:=false',
 
         # Enable color at 640x480
-        # 'rgb_camera.color_profile:=640x480x30',
+        'rgb_camera.color_profile:=640x480x30',
 
         # 'enable_color:=true',
         # 'color_width:=640',
@@ -106,10 +92,8 @@ def generate_launch_description():
     bag_record = ExecuteProcess(
         cmd=[
             'ros2', 'bag', 'record', '-o', unique_folder,
-            # '/optical_flow_velocity',
-            # 'optical_flow/raft_velocity',
-            # '/optical_flow/LFN_velocity',
             # '/camera/camera/color/image_raw',
+            '/optical_flow/LFN_velocity',
             '/events/read_split',
             '/realsense_accel_x',
             '/motor/present_velocity',
@@ -125,8 +109,6 @@ def generate_launch_description():
 
     return LaunchDescription([
         realsense_node,
-        # optical_flow_node_raft,
-        optical_flow_node_kanade,
         data_handler_node,
         data_handler_inertialsense_node,
         kalman_filter_node,

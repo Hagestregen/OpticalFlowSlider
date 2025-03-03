@@ -120,6 +120,7 @@ class LucasKanadeNode(Node):
 
         # Publish the optical flow velocity with header.
         self.velocity_pub.publish(vel_msg)
+        self.get_logger().info(f"Published optical flow velocity: {vel_msg.vector.x:.3f} m/s")
 
         # (Optional) Visualization: draw optical flow tracks.
         mask = np.zeros_like(frame)

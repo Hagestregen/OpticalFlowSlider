@@ -14,6 +14,7 @@ class DynamixelMXController:
     ADDR_PRESENT_VELOCITY = 128
     ADDR_Profile_Acceleration = 108
     ADDR_Profile_Velocity = 112
+    ADDR_OPERATING_MODE = 11
 
     # Default Settings
     PROTOCOL_VERSION = 2.0

@@ -20,7 +20,10 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'kalman_filter_node = kalman_filter.kalman_filter_node:main'
+            'kalman_filter_node = kalman_filter.kalman_filter_node:main',
+            'LFN3_kalman_filter_node = kalman_filter.LFN3_kalman_filter_node:main',
+            'raft_kalman_filter_node = kalman_filter.raft_kalman_filter_node:main',
+            'LK_kalman_filter_node = kalman_filter.LK_kalman_filter_node:main',
         ],
     },
 )

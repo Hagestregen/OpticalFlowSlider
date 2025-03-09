@@ -45,7 +45,9 @@ class DynamixelMXController:
 
     #Set the acceleration and velocity limits
     
-    def set_vel_and_accel(self):
+    def set_vel_and_accel(self, vel=100, accel=20):
+        self.PROFILE_VELOCITY = vel
+        self.PROFILE_ACCELERATION = accel
         result, error = self.packet_handler.write4ByteTxRx(
             self.port_handler, self.motor_id, self.ADDR_Profile_Acceleration, self.PROFILE_ACCELERATION
         )
@@ -95,6 +97,13 @@ class DynamixelMXController:
         )
         self.check_comm_result(result, error, "Set goal position")
         # print(f"[ID:{self.motor_id}] Set goal position: {position}")
+        
+    def get_goal_position(self):
+        goal_position, result, error = self.packet_handler.read4ByteTxRx(
+            self.port_handler, self.motor_id, self.ADDR_GOAL_POSITION
+        )
+        self.check_comm_result(result, error, "Read goal position")
+        return goal_position
 
     def get_present_position(self):
         position, result, error = self.packet_handler.read4ByteTxRx(

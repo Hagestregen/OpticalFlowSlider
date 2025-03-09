@@ -14,6 +14,7 @@ import queue
 from torch.amp import autocast
 from torchvision.models.optical_flow import raft_small, Raft_Small_Weights
 from torchvision.utils import flow_to_image
+from geometry_msgs.msg import Vector3Stamped
 
 def pad_to_multiple(img, multiple=8):
     """
@@ -43,7 +44,7 @@ class RaftOpticalFlowNode(Node):
         )
 
         # Publisher for velocity
-        self.velocity_publisher = self.create_publisher(Float64, '/optical_flow/raft_velocity', 10)
+        self.velocity_publisher = self.create_publisher(Vector3Stamped, '/optical_flow/raft_velocity', 10)
 
         # Initialize storage
         self.prev_image = None
@@ -113,9 +114,15 @@ class RaftOpticalFlowNode(Node):
         # Publish result if available
         try:
             velocity = self.result_queue.get_nowait()
-            velocity_msg = Float64()
-            velocity_msg.data = float(velocity)
-            self.velocity_publisher.publish(velocity_msg)
+            
+            vel_msg = Vector3Stamped()
+            vel_msg.header = msg.header  # Use the same header from the image
+            vel_msg.vector.x = float(velocity)
+            vel_msg.vector.y = 0.0  # assuming 2D motion
+            vel_msg.vector.z = 0.0  # assuming 2D motion
+            # velocity_msg = Float64()
+            # velocity_msg.data = float(velocity)
+            self.velocity_publisher.publish(vel_msg)
             elapsed = time.time() - start_total
             # self.get_logger().info(f"Published at {1/elapsed:.1f} Hz, prep time: {elapsed:.3f}s")
         except queue.Empty:

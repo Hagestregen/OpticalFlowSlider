@@ -9,6 +9,7 @@ import torch
 import torchvision.transforms.functional as F
 from PIL import Image as PILImage
 from std_msgs.msg import Float64
+from geometry_msgs.msg import Vector3Stamped
 
 # Import RAFT modules from torchvision for the small variant.
 from torchvision.models.optical_flow import raft_small, Raft_Small_Weights
@@ -56,7 +57,7 @@ class RaftOpticalFlowNode(Node):
             qos_profile
         )
 
-        self.velocity_publisher = self.create_publisher(Float64, '/optical_flow/raft_velocity', qos_profile)
+        self.velocity_publisher = self.create_publisher(Vector3Stamped, '/optical_flow/raft_velocity', qos_profile)
         self.bridge = CvBridge()
 
         self.prev_image = None   # Store the previous frame as a PIL image
@@ -162,9 +163,14 @@ class RaftOpticalFlowNode(Node):
         #     f"dy: {avg_velocity_top[1]:.3f} m/s"
         # )
 
-        velocity_msg = Float64()
-        velocity_msg.data = float(avg_velocity_top[0])
-        self.velocity_publisher.publish(velocity_msg)
+        vel_msg = Vector3Stamped()
+        vel_msg.header = msg.header  # Use the same header from the image
+        vel_msg.vector.x = float(avg_velocity_top[0])
+        vel_msg.vector.y = 0.0  # assuming 2D motion
+        vel_msg.vector.z = 0.0  # assuming 2D motion
+        # velocity_msg = Float64()
+        # velocity_msg.data = float(avg_velocity_top[0])
+        self.velocity_publisher.publish(vel_msg)
 
         # If you still want the overall average across the entire frame:
         # avg_velocity_full = velocity_mps.mean(dim=(1, 2))

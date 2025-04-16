@@ -40,7 +40,7 @@ RUN sudo apt-get install -y \
     python-is-python3
 
 RUN pip install --upgrade pip && \
-    pip install scipy numpy pandas matplotlib openpyxl
+    pip install scipy "numpy<2" pandas matplotlib openpyxl
 
 ## (Ignition Edifice installation removed)
 

@@ -38,4 +38,7 @@ RUN pip install pyrealsense2
 # Install dependencies for Dynamixel SDK
 RUN sudo apt-get install -y git python3-colcon-common-extensions
 
+# Install PyTorch 1.13.1 with CUDA 11.7 support
+RUN pip install torch==1.13.1+cu117 -f https://download.pytorch.org/whl/torch_stable.html
+
 # The remaining (commented out) Dynamixel SDK build steps remain unchanged.

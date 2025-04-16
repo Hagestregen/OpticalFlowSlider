@@ -94,7 +94,7 @@ def generate_launch_description():
         'alpha': 0.3,
         'dt': 0.01,
         'integral_limit': 10.0,
-        'deadband': 0.01
+        'deadband': 0.003
         }]
     )
     

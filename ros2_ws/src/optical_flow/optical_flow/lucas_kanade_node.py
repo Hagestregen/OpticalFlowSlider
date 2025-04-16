@@ -54,8 +54,8 @@ class LucasKanadeNode(Node):
 
         # Conversion factor: physical meters per pixel.
         # (For example, if 1000 pixels correspond to 1 meter, then factor = 0.001)
-        self.pixel_to_meter = 0.000566   # Adjust this value based on your calibration.
-
+        # self.pixel_to_meter = 0.000566   # Adjust this value based on your calibration.
+        self.pixel_to_meter = 0.001063
         self.get_logger().info('Lucas-Kanade Optical Flow Node has been started.')
 
     def image_callback(self, msg: Image):

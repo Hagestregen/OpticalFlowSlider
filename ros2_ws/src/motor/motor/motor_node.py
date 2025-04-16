@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Int32, Float64
+from std_msgs.msg import Int32, Float64,Float64MultiArray
 from motor_control import DynamixelMXController
 from utils import rpm_to_linear_velocity_mps
 import utils
@@ -28,7 +28,7 @@ class MotorPublisherNode(Node):
 
         # Publishers for motor state
         self.position_pub = self.create_publisher(Int32, 'motor/present_position', 10)
-        self.velocity_pub = self.create_publisher(Float64, 'motor/present_velocity', 10)
+        self.velocity_pub = self.create_publisher(Float64MultiArray, 'motor/present_velocity', 10)
         self.goal_pub = self.create_publisher(Int32, 'motor/goal_position', 10)
         
         # State variables
@@ -58,8 +58,12 @@ class MotorPublisherNode(Node):
         Args:
             present_velocity (float): The motor's velocity in meters per second.
         """
-        out_msg = Float64()
-        out_msg.data = float(present_velocity)
+        
+        current_time = self.get_clock().now().nanoseconds / 1e9
+        # out_msg = Float64()
+        out_msg = Float64MultiArray()
+        out_msg.data = [float(present_velocity), current_time]
+        # out_msg.data = float(present_velocity)
         self.velocity_pub.publish(out_msg)
 
     def publish_velocity_callback(self):
@@ -144,7 +148,7 @@ def main(args=None):
     rclpy.init(args=args)
 
     # Define the sequence of goal positions
-    goal_positions = [750, 2000, 200, 2000, 500, 2500, 500, 1000, 0]
+    goal_positions = [750, 2000, 200, 2000, 500, 2400, 500, 1000, 0]
     
     # Initialize the motor controller
     controller = DynamixelMXController(goal_positions=goal_positions)

@@ -55,11 +55,13 @@ class InertialsenseAccelSubscriber(Node):
         # Compute current time from the header.
         # Convert sec and nanosec to a float in seconds.
         current_time = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+        # self.get_logger().info(f'Current time: {current_time:.3f} s')
         
         if self.last_time is None:
             dt = 0.0  # No integration on the first message.
         else:
             dt = current_time - self.last_time
+            # self.get_logger().info(f'Delta time: {dt:.3f} s')
         
         # Save the current time for next callback.
         self.last_time = current_time

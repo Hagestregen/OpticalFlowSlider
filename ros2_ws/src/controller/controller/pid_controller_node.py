@@ -27,7 +27,7 @@ class PIDControllerNode(Node):
         self.declare_parameter('alpha', 0.3)        # Smoothing factor for position filter
         self.declare_parameter('dt', 0.01)          # Time step for control loop
         self.declare_parameter('integral_limit', 10.0)  # Limit for integral windup prevention
-        self.declare_parameter('deadband', 0.01)    # Error threshold below which no correction is made
+        self.declare_parameter('deadband', 0.001)    # Error threshold below which no correction is made
         
         # Retrieve parameter values
         self.Kp = self.get_parameter('Kp').get_parameter_value().double_value
@@ -87,7 +87,7 @@ class PIDControllerNode(Node):
         new_filtered_position = Float64()
         new_filtered_position.data = self.filtered_position
         self.pos_pub.publish(new_filtered_position)
-        self.get_logger().info(f'Filtered position: {self.filtered_position:.2f} m, Velocity: {self.current_velocity:.2f} m/s')
+        # self.get_logger().info(f'Filtered position: {self.filtered_position:.2f} m, Velocity: {self.current_velocity:.2f} m/s')
 
     def control_loop(self):
         error = self.setpoint - self.filtered_position
@@ -119,7 +119,7 @@ class PIDControllerNode(Node):
         msg = Float64()
         msg.data = u
         self.pub.publish(msg)
-        self.get_logger().info(f'Control signal: {u:.2f} m/s, Error: {error:.2f} m')
+        # self.get_logger().info(f'Control signal: {u:.2f} m/s, Error: {error:.2f} m')
 
 def main(args=None):
     rclpy.init(args=args)

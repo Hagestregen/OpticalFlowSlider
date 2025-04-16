@@ -29,7 +29,7 @@ setup(
         'console_scripts': [
             'motor_node = motor.motor_node:main',
             'motor_publisher_node = motor.motor_publisher_node:main',
-            
+            'mock_motor_node = motor.mock_motor_node:main',
         ],
     },
 )

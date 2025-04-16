@@ -29,7 +29,8 @@ setup(
             'data_handler = data_handler.data_handler_node:main',
             'realsense_accel_node = data_handler.realsense_accel_node:main',
             'inertialsense_accel_node = data_handler.inertialsense_accel_node:main',
-            'calibration_node = data_handler.calibration_node:main'
+            'calibration_node = data_handler.calibration_node:main',
+            'data_recorder_node = data_handler.data_recorder_node:main',
         ],
     },
 )

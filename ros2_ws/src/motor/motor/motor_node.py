@@ -113,22 +113,22 @@ class MotorPublisherNode(Node):
         if self.pausing:
             current_time = self.get_clock().now()
             elapsed = (current_time - self.pause_start_time).nanoseconds / 1e9  # Convert to seconds
-            # if elapsed >= 1.0:
-            if elapsed >= 10.0: #Stationary
+            if elapsed >= 1.0:
+            # if elapsed >= 10.0: #Stationary
                 self.pausing = False
                 goal_position = self.controller.goal_positions[self.current_index]
                 self.controller.set_goal_position(goal_position)
                 # self.get_logger().info(f"🔹 Moving to goal position: {goal_position}")
         else:
             # Handle speed changes and initiate pause before moving to specific goals
-            # if self.current_index == 2:
-            if self.current_index == 0: #Stationary test
+            if self.current_index == 2:
+            # if self.current_index == 0: #Stationary test
                 self.controller.set_vel_and_accel(25, 10)
                 self.get_logger().info("🔹 Set velocity and acceleration to: 25 and 10")
                 self.pausing = True
                 self.pause_start_time = self.get_clock().now()
-            if self.current_index == 3:
-            # if self.current_index == 1:
+            # if self.current_index == 3:
+            if self.current_index == 1:
                 self.controller.set_vel_and_accel(150, 35)
                 # self.controller.set_vel_and_accel(25, 10)   #Stationary test
                 self.get_logger().info("🔹 Set velocity and acceleration to: 150 and 35")
@@ -167,8 +167,8 @@ def main(args=None):
     rclpy.init(args=args)
 
     # Define the sequence of goal positions
-    # goal_positions = [750, 2000, 200, 2000, 500, 2400, 500, 1000, 0]
-    goal_positions = [1500, 0]
+    goal_positions = [750, 2000, 200, 2000, 500, 2400, 500, 1000, 0]
+    # goal_positions = [1500, 0]
     
     # Initialize the motor controller
     controller = DynamixelMXController(goal_positions=goal_positions)

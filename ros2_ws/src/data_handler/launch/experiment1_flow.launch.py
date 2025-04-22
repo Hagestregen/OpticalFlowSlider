@@ -7,7 +7,7 @@ import launch_ros.actions
 from launch.actions import ExecuteProcess, TimerAction
 import launch_ros.actions
 
-def get_unique_bag_folder(base_dir="my_rosbag", base_name="Experiment1_test_flow"):
+def get_unique_bag_folder(base_dir="my_rosbag", base_name="Experiment1_RAFT_stationary_640"):
     """
     Generate a unique folder path under base_dir with the base_name.
     If base_dir/base_name exists, increment a counter until a new folder name is found.
@@ -15,6 +15,7 @@ def get_unique_bag_folder(base_dir="my_rosbag", base_name="Experiment1_test_flow
     Returns:
         candidate (str): The unique folder path (which does not exist yet).
         bag_name (str): The base name of the folder.
+        
     """
     if not os.path.exists(base_dir):
         os.makedirs(base_dir)
@@ -45,6 +46,20 @@ def generate_launch_description():
         }],
         output='screen'
     )
+    
+    optical_flow_node_kanade = launch_ros.actions.Node(
+        package='optical_flow',
+        executable='lucas_kanade_node',
+        name='lucas_kanade_node',
+        output='screen'
+    )
+    
+    raft_node = launch_ros.actions.Node(
+        package='optical_flow',
+        executable='raft_direct_node',
+        name='raft_direct_node',
+        output='screen'
+    )
 
 
 
@@ -52,21 +67,36 @@ def generate_launch_description():
     bag_record = ExecuteProcess(
         cmd=[
             'ros2', 'bag', 'record', '-o', unique_folder,
+            '/events/read_split',
+            # Camera
             '/camera/camera/color/image_raw',
+            '/camera/camera/depth/image_raw',
+            # Depth
+            '/camera/depth/median_distance',
+            # Optical flow
             '/optical_flow/LFN3_velocity',
             '/optical_flow/LFN3_smooth_velocity',
-            '/events/read_split',
-            '/motor/present_velocity',
-            '/inertialsense/velocity_x',
+            '/optical_flow/PWC_velocity',
+            '/optical_flow/PWC_smooth_velocity',
+            '/optical_flow/raft_smooth_velocity',
+            '/optical_flow/raft_velocity',
+            '/optical_flow/LK_velocity',
+            '/optical_flow/raw_velocity',
+            # Kalman Filter
             '/kalman_filter/state',
             '/kalman_filter/velocity',
-            '/inertialsense/imu',
-            '/inertialsense/velocity_no_bias', # Velocity no bias
-            '/motor/control_input',
             '/kalman_filter/imu_filtered',
+            # IMU
+            '/inertialsense/imu',
+            '/inertialsense/velocity_x',
+            '/inertialsense/velocity_no_bias', # Velocity no bias
+            # Motor
+            '/motor/present_velocity',
+            #Pid 
+            '/motor/control_input',
             '/slider/current_position',
             '/pid/output',
-            '/camera/depth/median_distance',
+            
     
         ],
         output='screen'
@@ -74,8 +104,9 @@ def generate_launch_description():
 
     return LaunchDescription([
         bag_record,
-        kalman_filter_cfg_node,
-        
+        # kalman_filter_cfg_node,
+        # optical_flow_node_kanade,
+        raft_node,
         
     ])
     

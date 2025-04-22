@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float64
-from sensor_msgs.msg import Image
-import cv2
+from sensor_msgs.msg import Image, Range
+from geometry_msgs.msg import Vector3Stamped
+from cv_bridge import CvBridge
 import numpy as np
 import torch
-import torchvision.transforms.functional as F
-from PIL import Image as PILImage
-import time
-import threading
-import queue
 from torch.amp import autocast
-from torchvision.models.optical_flow import raft_small, Raft_Small_Weights
-from torchvision.utils import flow_to_image
-from geometry_msgs.msg import Vector3Stamped
+from torchvision.transforms.functional import pad
+from torchvision.models.optical_flow import raft_small, Raft_Small_Weights, raft_large, Raft_Large_Weights
+from PIL import Image as PILImage
+import os
+import csv
+import time
+import pyrealsense2 as rs
+from collections import deque
+import cv2
 
 def pad_to_multiple(img, multiple=8):
     """
@@ -28,143 +29,132 @@ def pad_to_multiple(img, multiple=8):
     pad_left = pad_w // 2
     pad_right = pad_w - pad_left
     padding = (pad_left, pad_top, pad_right, pad_bottom)
-    padded_img = F.pad(img, padding)
-    return padded_img, padding
+    return pad(img, padding), padding
 
 class RaftOpticalFlowNode(Node):
     def __init__(self):
         super().__init__('raft_optical_flow_node')
 
-        # Subscription to RealSense camera topic
+        # Frame & depth settings
+        self.width = 640
+        self.height = 480
+        self.width_depth = 640
+        self.height_depth = 480
+        self.fps = 30
+        self.pixel_to_meter = 0.001063
+
+        # CSV for inference timings
+        self.csv_filename = f"raft_L_inference_{self.width}x{self.height}.csv"
+        if not os.path.exists(self.csv_filename):
+            with open(self.csv_filename, 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(['timestamp', 'inference_time_s'])
+
+        # Read RealSense intrinsics once
+        self.get_logger().info('Reading RealSense intrinsics…')
+        pipeline = rs.pipeline()
+        cfg = rs.config()
+        cfg.enable_stream(rs.stream.color,  self.width, self.height, rs.format.rgb8, self.fps)
+        cfg.enable_stream(rs.stream.depth,  self.width_depth, self.height_depth, rs.format.z16,  self.fps)
+        profile = pipeline.start(cfg)
+        intr = profile.get_stream(rs.stream.color).as_video_stream_profile().get_intrinsics()
+        self.focal_length_x = intr.fx
+        pipeline.stop()
+        self.get_logger().info(f"RealSense fx = {self.focal_length_x:.2f} px")
+
+        # ROS interfaces
+        self.bridge    = CvBridge()
         self.subscription = self.create_subscription(
-            Image,
-            '/camera/camera/color/image_raw',
-            self.image_callback,
-            10
-        )
+            Image, '/camera/camera/color/image_raw', self.image_callback, 10)
+        self.sub_depth = self.create_subscription(
+            Range, '/camera/depth/median_distance', self.depth_callback, 10)
 
-        # Publisher for velocity
-        self.velocity_publisher = self.create_publisher(Vector3Stamped, '/optical_flow/raft_velocity', 10)
+        # Publishers for raw & smoothed velocity
+        self.raw_pub    = self.create_publisher(Vector3Stamped, '/optical_flow/raft_velocity',        10)
+        self.smooth_pub = self.create_publisher(Vector3Stamped, '/optical_flow/raft_smooth_velocity', 10)
 
-        # Initialize storage
+        # State for image‐based flow
         self.prev_image = None
-        self.prev_time = None
+        self.prev_time  = None
 
-        # Queues for parallel processing
-        self.frame_queue = queue.Queue(maxsize=2)
-        self.result_queue = queue.Queue()
-        self.running = True
+        # Buffer for smoothing
+        self.velocity_buffer = deque(maxlen=5)
 
-        # Load RAFT-Small model
-        self.get_logger().info("Loading RAFT (small) model...")
-        weights = Raft_Small_Weights.DEFAULT
+        # Load RAFT‐small model
+        self.get_logger().info("Loading RAFT‐small model…")
+        # weights = Raft_Small_Weights.DEFAULT
+        weights = Raft_Large_Weights.DEFAULT
         self.transforms = weights.transforms()
-        self.model = raft_small(weights=weights, progress=False)
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.model.to(self.device).eval()
-        self.get_logger().info(f"RAFT Optical Flow Node started on {self.device}")
+        self.device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        # self.model      = raft_small(weights=weights).to(self.device).eval()
+        self.model     = raft_large(weights=weights).to(self.device).eval()
 
-        # Conversion factor: pixels -> meters
-        self.conv_factor = 0.000566
+    def depth_callback(self, msg: Range):
+        self.pixel_to_meter = msg.range / self.focal_length_x
+        self.get_logger().info(f"pixel_to_meter updated to {self.pixel_to_meter:.6f} m/px")
 
-        # Start worker thread for inference
-        self.worker = threading.Thread(target=self.process_flow, daemon=True)
-        self.worker.start()
-
-    def image_callback(self, msg):
-        start_total = time.time()
-
-        # Convert ROS2 Image message to NumPy array
+    def image_callback(self, msg: Image):
+        # Convert to BGR frame
         try:
-            cv_image = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, 3)
-            if msg.encoding == 'bgr8':
-                cv_image = cv_image  # Already in BGR
-            elif msg.encoding == 'rgb8':
-                cv_image = cv_image[..., [2, 1, 0]]  # RGB to BGR
-            else:
-                self.get_logger().error(f"Unsupported encoding: {msg.encoding}")
-                return
+            frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         except Exception as e:
-            self.get_logger().error(f"Failed to convert image: {str(e)}")
+            self.get_logger().error(f"CV Bridge error: {e}")
             return
 
-        # Preprocess image
-        cv_image = cv_image[:cv_image.shape[0] // 2, :, :]  # Crop to top half
-        rgb_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
-        current_image = PILImage.fromarray(np.uint8(rgb_image))
-        current_time = time.time()
-
+        # Compute dt from ROS header
+        stamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
         if self.prev_time is None:
-            self.prev_image = current_image
-            self.prev_time = current_time
+            self.prev_image = frame
+            self.prev_time  = stamp
             return
-
-        dt = current_time - self.prev_time
+        dt = stamp - self.prev_time
         if dt <= 0:
             dt = 1e-3
-        self.prev_time = current_time
+        self.prev_time = stamp
 
-        # Queue frame for processing
-        try:
-            self.frame_queue.put_nowait((self.prev_image, current_image, dt))
-            self.prev_image = current_image
-        except queue.Full:
-            pass  # Skip if queue is full
+        # Prepare for inference
+        t0 = time.perf_counter()
+        img1 = PILImage.fromarray(cv2.cvtColor(self.prev_image, cv2.COLOR_BGR2RGB))
+        img2 = PILImage.fromarray(cv2.cvtColor(frame,           cv2.COLOR_BGR2RGB))
+        inp1, inp2 = self.transforms(img1, img2)
+        inp1, _ = pad_to_multiple(inp1.unsqueeze(0))
+        inp2, _ = pad_to_multiple(inp2.unsqueeze(0))
 
-        # Publish result if available
-        try:
-            velocity = self.result_queue.get_nowait()
-            
-            vel_msg = Vector3Stamped()
-            vel_msg.header = msg.header  # Use the same header from the image
-            vel_msg.vector.x = float(velocity)
-            vel_msg.vector.y = 0.0  # assuming 2D motion
-            vel_msg.vector.z = 0.0  # assuming 2D motion
-            # velocity_msg = Float64()
-            # velocity_msg.data = float(velocity)
-            self.velocity_publisher.publish(vel_msg)
-            elapsed = time.time() - start_total
-            # self.get_logger().info(f"Published at {1/elapsed:.1f} Hz, prep time: {elapsed:.3f}s")
-        except queue.Empty:
-            pass
+        # Inference
+        with torch.no_grad(), autocast(self.device.type):
+            flows = self.model(inp1.to(self.device), inp2.to(self.device))
+        flow = flows[-1][0].cpu().numpy()
 
-    def process_flow(self):
-        while self.running:
-            try:
-                prev_image, current_image, dt = self.frame_queue.get(timeout=1.0)
-                start_process = time.time()
+        # Compute mean horizontal velocity (px→m)
+        vx = float((flow[0] / dt).mean() * self.pixel_to_meter)
 
-                # Transform images
-                img1, img2 = self.transforms(prev_image, current_image)
-                img1 = img1.unsqueeze(0)
-                img2 = img2.unsqueeze(0)
-                img1, _ = pad_to_multiple(img1, multiple=8)
-                img2, _ = pad_to_multiple(img2, multiple=8)
+        # Publish raw velocity
+        raw_msg = Vector3Stamped()
+        raw_msg.header = msg.header
+        raw_msg.vector.x = vx
+        raw_msg.vector.y = 0.0
+        raw_msg.vector.z = 0.0
+        self.raw_pub.publish(raw_msg)
 
-                # Compute optical flow with FP16
-                start_inference = time.time()
-                with torch.no_grad():
-                    with autocast('cuda'):
-                        flows = self.model(img1.to(self.device), img2.to(self.device))
-                flow = flows[-1][0].cpu()
-                inference_time = time.time() - start_inference
+        # Publish smoothed velocity
+        self.velocity_buffer.append(vx)
+        smooth_v = sum(self.velocity_buffer) / len(self.velocity_buffer)
+        smooth_msg = Vector3Stamped()
+        smooth_msg.header = msg.header
+        smooth_msg.vector.x = smooth_v
+        smooth_msg.vector.y = 0.0
+        smooth_msg.vector.z = 0.0
+        self.smooth_pub.publish(smooth_msg)
 
-                # Compute velocity
-                velocity_mps = (flow / dt) * self.conv_factor
-                avg_velocity = velocity_mps.mean(dim=(1, 2))[0]
-                self.result_queue.put(float(avg_velocity))
+        # Log inference+publish time
+        t1 = time.perf_counter()
+        with open(self.csv_filename, 'a', newline='') as f:
+            csv.writer(f).writerow([t1, t1 - t0])
 
-                total_process = time.time() - start_process
-                # self.get_logger().info(f"Inference: {inference_time:.3f}s, Process: {total_process:.3f}s")
-            except queue.Empty:
-                continue
-            except Exception as e:
-                self.get_logger().error(f"Error in process_flow: {str(e)}")
-                continue
+        # Update for next frame
+        self.prev_image = frame
 
     def destroy_node(self):
-        self.running = False
-        self.worker.join(timeout=2.0)
         super().destroy_node()
 
 def main(args=None):
@@ -173,7 +163,7 @@ def main(args=None):
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
-        node.get_logger().info("Keyboard interrupt, shutting down.")
+        node.get_logger().info("Shutting down.")
     finally:
         node.destroy_node()
         rclpy.shutdown()

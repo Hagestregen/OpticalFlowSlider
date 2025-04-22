@@ -8,11 +8,48 @@ import cv2
 import numpy as np
 from cv_bridge import CvBridge
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
+import os
+import csv
+from ament_index_python.packages import get_package_share_directory
+import time
+import pyrealsense2 as rs
+from sensor_msgs.msg import Range
 
 class LucasKanadeNode(Node):
     def __init__(self):
         super().__init__('lucas_kanade_node')
+        
+        self.width = 640
+        self.height = 480
+        self.width_depth = 640
+        self.height_depth = 480
+        self.fps = 30
+        self.pixel_to_meter = 0.001063
 
+        
+        # Prepare CSV file for inference times
+        self.csv_filename = f"lk_inference_{self.width}x{self.height}.csv"
+        # Write header if new file
+        if not os.path.isfile(self.csv_filename):
+            with open(self.csv_filename, 'w', newline='') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(['timestamp', 'inference_time_s'])
+                
+        # --- RealSense intrinsics only (no frame loop) ---
+        self.get_logger().info('Starting RealSense pipeline to read intrinsics…')
+        pipeline = rs.pipeline()
+        cfg = rs.config()
+        cfg.enable_stream(rs.stream.color, self.width, self.height, rs.format.rgb8, self.fps)
+        cfg.enable_stream(rs.stream.depth, self.width_depth, self.height_depth, rs.format.z16, self.fps)
+        profile = pipeline.start(cfg)
+        color_profile = profile.get_stream(rs.stream.color).as_video_stream_profile()
+        intr = color_profile.get_intrinsics()
+        self.focal_length_x = intr.fx
+        self.get_logger().info(f'RealSense fx = {self.focal_length_x:.2f} px')
+        pipeline.stop()
+        # ----------------------------------------------
+                
+                
         # Create a QoS profile for images.
         qos_profile = QoSProfile(
             depth=10,
@@ -51,14 +88,30 @@ class LucasKanadeNode(Node):
             maxLevel=2,
             criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03)
         )
+        
+                # Depth subscription (Range message)
+        self.median_depth = None
+        self.sub_depth = self.create_subscription(
+            Range,
+            '/camera/depth/median_distance',
+            self.depth_callback,
+            10
+        )
 
-        # Conversion factor: physical meters per pixel.
-        # (For example, if 1000 pixels correspond to 1 meter, then factor = 0.001)
-        # self.pixel_to_meter = 0.000566   # Adjust this value based on your calibration.
-        self.pixel_to_meter = 0.001063
         self.get_logger().info('Lucas-Kanade Optical Flow Node has been started.')
+        
+    
+    def depth_callback(self, msg: Range):
+        # Treat Range.range as depth in meters
+        self.median_depth = float(msg.range)
+        if self.focal_length_x:
+            self.pixel_to_meter = self.median_depth / self.focal_length_x
+            self.get_logger().info(
+                f"Updated pixel_to_meter: {self.pixel_to_meter:.6f} m/px"
+            )
 
     def image_callback(self, msg: Image):
+        start_time = time.perf_counter()
         try:
             # Convert ROS Image to OpenCV image (assumes BGR8 encoding).
             frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
@@ -137,6 +190,15 @@ class LucasKanadeNode(Node):
         self.prev_gray = gray.copy()
         self.prev_points = good_new.reshape(-1, 1, 2)
         self.prev_stamp = current_stamp
+        
+        end_time = time.perf_counter()
+        inference_time = end_time - start_time
+        
+        timestamp = time.time()
+        with open(self.csv_filename, 'a', newline='') as csvfile:
+            csv.writer(csvfile).writerow([timestamp, inference_time])
+            
+            
 
 def main(args=None):
     rclpy.init(args=args)

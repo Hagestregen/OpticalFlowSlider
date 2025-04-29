@@ -48,12 +48,15 @@ class KalmanFilter:
         Ad = np.array([[1, dt, 0],
                        [0, 1, -dt],
                        [0, 0, 1]])
+
         Bd = np.array([[0],
                        [dt],
                        [0]])
+        
         # Ed = np.array([[0, 0],
         #                [0, 0],
         #                [0, dt]])
+        
         Ed = np.array([
             [0.5*dt**2,   0     ],   # accel‐noise → position
             [   dt,       0     ],   # accel‐noise → velocity

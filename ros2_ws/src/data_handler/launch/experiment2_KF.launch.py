@@ -7,7 +7,7 @@ import launch_ros.actions
 from launch.actions import ExecuteProcess, TimerAction
 import launch_ros.actions
 
-def get_unique_bag_folder(base_dir="my_rosbag", base_name="lfn3_KF_640"):
+def get_unique_bag_folder(base_dir="my_rosbag", base_name="LFN3_notOOSM_KF_640"):
     """
     Generate a unique folder path under base_dir with the base_name.
     If base_dir/base_name exists, increment a counter until a new folder name is found.
@@ -15,7 +15,6 @@ def get_unique_bag_folder(base_dir="my_rosbag", base_name="lfn3_KF_640"):
     Returns:
         candidate (str): The unique folder path (which does not exist yet).
         bag_name (str): The base name of the folder.
-        
     """
     if not os.path.exists(base_dir):
         os.makedirs(base_dir)
@@ -31,51 +30,85 @@ def generate_launch_description():
     # Create a unique output folder for the bag.
     unique_folder, bag_name = get_unique_bag_folder()
     
+
+    motor_node_pos = launch_ros.actions.Node(
+        package='motor',
+        executable='motor_node',
+        name='motor_node',
+        output='screen'
+    )
+    
+    # depth_calc_node = launch_ros.actions.Node(
+    #     package='data_handler',
+    #     executable='depth_calc_node',
+    #     name='depth_calc_node',
+    #     output='screen'
+    # )
+
+
+        
+    data_handler_inertialsense_node = launch_ros.actions.Node(
+        package='data_handler',
+        executable='inertialsense_accel_node',
+        name='inertialsense_accel_node',
+        output='screen'
+    )
+    
     kalman_filter_cfg_node = launch_ros.actions.Node(
         package='kalman_filter',
         executable='LFN3_kalman_filter_node',
         name='LFN3_kalman_filter_node',
         parameters=[{
-            'dt': 0.01,
-            'sigma_a': 0.3,
-            'sigma_flow': 0.005,  # Adjusted for LiteFlowNet noise
-            'sigma_b': 0.01,
-            'imu_cutoff_freq': 2.5,
-            'imu_sampling_freq': 71,
-            'imu_filter_order': 2,
+        'dt':                   0.01,
+        'sigma_a':              0.1,
+        'sigma_flow':           0.01,  
+        'sigma_b':              0.01,    
+        'imu_cutoff_freq':      2.5,
+        'imu_sampling_freq':    71,
+        'imu_filter_order':     2,
+        'enable_oosm':          False,
         }],
         output='screen'
     )
     
-    # kalman_filter_node = launch_ros.actions.Node(
-        # package='kalman_filter',
-        # executable='kalman_filter_node',
-        # name='kalman_filter_node',
-        # parameters=[{
-            # 'dt': 0.01,
-            # 'sigma_a': 0.3,
-            # 'sigma_flow': 0.005,  # Adjusted for LiteFlowNet noise
-            # 'sigma_b': 0.01,
-            # 'imu_cutoff_freq': 5,
-            # 'imu_sampling_freq': 71,
-            # 'imu_filter_order': 4,
-        # }],
-        # output='screen'
-    # )
-    
-    optical_flow_node_kanade = launch_ros.actions.Node(
-        package='optical_flow',
-        executable='lucas_kanade_node',
-        name='lucas_kanade_node',
+    # Start the RealSense node.
+    realsense_node = ExecuteProcess(
+        cmd=[
+            'ros2', 'launch',
+            'realsense2_camera', 'rs_launch.py',
+
+            # Enable Depth
+            'depth_module.enable:=true',
+            'depth_module.depth_profile:=640x480x30',
+            'align_depth.enable:=true',
+            
+            
+        
+
+            # Enable color at 640x480
+            'rgb_camera.color_profile:=640x480x30',     # 640x480x30
+            # 'rgb_camera.color_profile:=1280x720x30',    # 1280x720x30
+            # 'rgb_camera.color_profile:=960x540x30',     # 960x540x30
+            # 'rgb_camera.color_profile:=848x480x60',     # 848x480x60
+            # 'rgb_camera.color_profile:=848x480x30',     # 848x480x30
+
+            # 'enable_color:=true',
+            # 'color_width:=640',
+            # 'color_height:=480',
+            # 'color_fps:=30',
+
+            # Enable IMU (accel)
+            # 'enable_accel:=true'
+        ],
         output='screen'
-    )
+        )
+        
+        
     
-    raft_node = launch_ros.actions.Node(
-        package='optical_flow',
-        executable='raft_direct_node',
-        name='raft_direct_node',
-        output='screen'
-    )
+    
+    delayed_motor_play = TimerAction(period=2.5, actions=[motor_node_pos])
+
+
 
 
 
@@ -107,6 +140,7 @@ def generate_launch_description():
             '/kalman_filter/new_velocity',
             '/kalman_filter/new_position',
             '/kalman_filter/new_imu_filtered',
+            'kalman/p_matrix',
             # IMU
             '/inertialsense/imu',
             '/inertialsense/velocity_x',
@@ -123,13 +157,14 @@ def generate_launch_description():
         output='screen'
     )
 
+
     return LaunchDescription([
         bag_record,
-        # kalman_filter_node,
+        # realsense_node,
+        # depth_calc_node,
+        data_handler_inertialsense_node,
         kalman_filter_cfg_node,
-        # optical_flow_node_kanade,
-        # raft_node,
-        
+        delayed_motor_play
     ])
     
     

@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float64, Float32MultiArray, Float64MultiArray
+from geometry_msgs.msg import Vector3Stamped
 import numpy as np
 
 class PIDControllerNode(Node):
@@ -54,7 +55,7 @@ class PIDControllerNode(Node):
 
         # Subscriber to Kalman filter state
         self.sub = self.create_subscription(
-            Float32MultiArray,
+            Vector3Stamped,
             '/kalman_filter/state',
             self.state_callback,
             10
@@ -80,8 +81,8 @@ class PIDControllerNode(Node):
         self.create_timer(self.dt, self.control_loop)
 
     def state_callback(self, msg):
-        self.current_position = msg.data[0]
-        self.current_velocity = msg.data[1]
+        self.current_position = msg.vector.x
+        self.current_velocity = msg.vector.y
         self.filtered_position = (self.alpha * self.current_position +
                                   (1 - self.alpha) * self.filtered_position)
         new_filtered_position = Float64()

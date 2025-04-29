@@ -43,12 +43,12 @@ class RaftOpticalFlowNode(Node):
         self.fps = 30
         self.pixel_to_meter = 0.001063
 
-        # CSV for inference timings
-        self.csv_filename = f"raft_L_inference_{self.width}x{self.height}.csv"
-        if not os.path.exists(self.csv_filename):
-            with open(self.csv_filename, 'w', newline='') as f:
-                writer = csv.writer(f)
-                writer.writerow(['timestamp', 'inference_time_s'])
+        # # CSV for inference timings
+        # self.csv_filename = f"raft_L_inference_{self.width}x{self.height}.csv"
+        # if not os.path.exists(self.csv_filename):
+        #     with open(self.csv_filename, 'w', newline='') as f:
+        #         writer = csv.writer(f)
+        #         writer.writerow(['timestamp', 'inference_time_s'])
 
         # Read RealSense intrinsics once
         self.get_logger().info('Reading RealSense intrinsics…')
@@ -82,12 +82,12 @@ class RaftOpticalFlowNode(Node):
 
         # Load RAFT‐small model
         self.get_logger().info("Loading RAFT‐small model…")
-        # weights = Raft_Small_Weights.DEFAULT
-        weights = Raft_Large_Weights.DEFAULT
+        weights = Raft_Small_Weights.DEFAULT
+        # weights = Raft_Large_Weights.DEFAULT
         self.transforms = weights.transforms()
         self.device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        # self.model      = raft_small(weights=weights).to(self.device).eval()
-        self.model     = raft_large(weights=weights).to(self.device).eval()
+        self.model      = raft_small(weights=weights).to(self.device).eval()
+        # self.model     = raft_large(weights=weights).to(self.device).eval()
 
     def depth_callback(self, msg: Range):
         self.pixel_to_meter = msg.range / self.focal_length_x
@@ -113,7 +113,7 @@ class RaftOpticalFlowNode(Node):
         self.prev_time = stamp
 
         # Prepare for inference
-        t0 = time.perf_counter()
+        # t0 = time.perf_counter()
         img1 = PILImage.fromarray(cv2.cvtColor(self.prev_image, cv2.COLOR_BGR2RGB))
         img2 = PILImage.fromarray(cv2.cvtColor(frame,           cv2.COLOR_BGR2RGB))
         inp1, inp2 = self.transforms(img1, img2)
@@ -146,10 +146,10 @@ class RaftOpticalFlowNode(Node):
         smooth_msg.vector.z = 0.0
         self.smooth_pub.publish(smooth_msg)
 
-        # Log inference+publish time
-        t1 = time.perf_counter()
-        with open(self.csv_filename, 'a', newline='') as f:
-            csv.writer(f).writerow([t1, t1 - t0])
+        # # Log inference+publish time
+        # t1 = time.perf_counter()
+        # with open(self.csv_filename, 'a', newline='') as f:
+        #     csv.writer(f).writerow([t1, t1 - t0])
 
         # Update for next frame
         self.prev_image = frame

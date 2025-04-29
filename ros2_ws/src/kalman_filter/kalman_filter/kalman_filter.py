@@ -2,10 +2,10 @@ import numpy as np
 
 class KalmanFilter:
     def __init__(self, dt=0.01, sigma_a=0.3, sigma_flow=0.05, sigma_b=0.001):
-        self.dt_default = dt
-        self.sigma_a = sigma_a  # Process noise (acceleration)
-        self.sigma_flow = sigma_flow  # Measurement noise (optical flow)
-        self.sigma_b = sigma_b  # Bias noise
+        self.dt_default = dt            # Default time step
+        self.sigma_a = sigma_a          # Process noise (acceleration)
+        self.sigma_flow = sigma_flow    # Measurement noise (optical flow)
+        self.sigma_b = sigma_b          # Bias noise
 
         # State vector: [position, velocity, bias]
         self.x_hat = np.zeros((3, 1))  # Initial state
@@ -24,9 +24,15 @@ class KalmanFilter:
                            [0]])  # No effect on bias
 
         # Process noise input matrix
-        self.E = np.array([[0, 0],
-                           [0, 0],
-                           [0, 1]])  # Bias noise
+        # self.E = np.array([[0, 0],
+        #                    [0, 0],
+        #                    [0, 1]])  # Bias noise
+
+        self.E_cont = np.array([
+            [0.5*self.dt_default**2,   0],
+            [    self.dt_default,      0],
+            [0,           self.dt_default]
+        ])  
 
         self.Q_cont = np.array([[sigma_a**2, 0],
                                 [0, sigma_b**2]])  # Process noise covariance
@@ -45,9 +51,15 @@ class KalmanFilter:
         Bd = np.array([[0],
                        [dt],
                        [0]])
-        Ed = np.array([[0, 0],
-                       [0, 0],
-                       [0, dt]])
+        # Ed = np.array([[0, 0],
+        #                [0, 0],
+        #                [0, dt]])
+        Ed = np.array([
+            [0.5*dt**2,   0     ],   # accel‐noise → position
+            [   dt,       0     ],   # accel‐noise → velocity
+            [   0,      dt     ]    # bias‐noise → bias
+            ])
+        
         Qd = Ed @ self.Q_cont @ Ed.T
 
         # Predict next state

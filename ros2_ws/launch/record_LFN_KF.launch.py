@@ -4,10 +4,8 @@ import launch
 from launch import LaunchDescription
 from launch.actions import ExecuteProcess
 import launch_ros.actions
-from launch.actions import ExecuteProcess, TimerAction
-import launch_ros.actions
 
-def get_unique_bag_folder(base_dir="my_rosbag", base_name="LFN3_09.04"):
+def get_unique_bag_folder(base_dir="my_rosbag", base_name="KalmanFilter_LFN_sigma_b_0-1_sigma_a_0-1_with_oosm"):
     """
     Generate a unique folder path under base_dir with the base_name.
     If base_dir/base_name exists, increment a counter until a new folder name is found.
@@ -29,59 +27,63 @@ def get_unique_bag_folder(base_dir="my_rosbag", base_name="LFN3_09.04"):
 def generate_launch_description():
     # Create a unique output folder for the bag.
     unique_folder, bag_name = get_unique_bag_folder()
-    
-    kalman_filter_cfg_node = launch_ros.actions.Node(
-        package='kalman_filter',
-        executable='LFN3_kalman_filter_node',
-        name='LFN3_kalman_filter_node',
-        parameters=[{
-            'dt': 0.01,
-            'sigma_a': 0.3,
-            'sigma_flow': 0.01,  # Adjusted for LiteFlowNet noise
-            'sigma_b': 0.005,
-            'imu_cutoff_freq': 2.5,
-            'imu_sampling_freq': 71,
-            'imu_filter_order': 2,
-        }],
-        output='screen'
-    )
 
-    motor_node_pos = launch_ros.actions.Node(
+    # Launch the motor node.
+    motor_node = launch_ros.actions.Node(
         package='motor',
         executable='motor_node',
         name='motor_node',
         output='screen'
     )
 
-
-        
+    # Launch data handler nodes.
+    data_handler_node = launch_ros.actions.Node(
+        package='data_handler',
+        executable='realsense_accel_node',
+        name='realsense_accel_node',
+        output='screen'
+    )
+    
     data_handler_inertialsense_node = launch_ros.actions.Node(
         package='data_handler',
         executable='inertialsense_accel_node',
         name='inertialsense_accel_node',
         output='screen'
     )
-        
-        
-    pid_controller_node = launch_ros.actions.Node(
-    package='controller',
-    executable='pid_controller_node',
-    name='pid_controller_node',
-    output='screen',
-    parameters=[{
-        'Kp': 2.0,
-        'Ki': 0.0,
-        'Kd': 0.5,
-        'setpoint': 0.0,
-        'alpha': 0.3,
-        'dt': 0.01,
-        'integral_limit': 10.0,
-        'deadband': 0.01
-        }]
+    
+    kalman_filter_node = launch_ros.actions.Node(
+        package='kalman_filter',
+        executable='kalman_filter_node',
+        name='kalman_filter_node',
+        output='screen'
     )
     
-    delayed_motor_play = TimerAction(period=1.0, actions=[motor_node_pos])
+    
 
+    # Start the RealSense node.
+    realsense_node = ExecuteProcess(
+    cmd=[
+        'ros2', 'launch',
+        'realsense2_camera', 'rs_launch.py',
+
+        # Disable depth and IR
+        'depth_module.enable:=false',
+        'enable_infra1:=false',
+        'enable_infra2:=false',
+
+        # Enable color at 640x480
+        'rgb_camera.color_profile:=640x480x30',
+
+        # 'enable_color:=true',
+        # 'color_width:=640',
+        # 'color_height:=480',
+        # 'color_fps:=30',
+
+        # Enable IMU (accel)
+        'enable_accel:=true'
+    ],
+    output='screen'
+    )
 
 
 
@@ -91,35 +93,28 @@ def generate_launch_description():
         cmd=[
             'ros2', 'bag', 'record', '-o', unique_folder,
             # '/camera/camera/color/image_raw',
-            '/optical_flow/LFN3_velocity',
-            '/optical_flow/LFN3_smooth_velocity',
+            '/optical_flow/LFN_velocity',
             '/events/read_split',
+            '/realsense_accel_x',
             '/motor/present_velocity',
-            '/inertialsense/velocity_x',
+            '/inertialsense_velocity_x',
+            '/realsense_vel_x',
             '/kalman_filter/state',
             '/kalman_filter/velocity',
+            '/optical_flow/LK_velocity',
             '/inertialsense/imu',
-            '/inertialsense/velocity_no_bias', # Velocity no bias
-            '/motor/control_input',
-            '/kalman_filter/imu_filtered',
-            '/slider/current_position',
-            '/pid/output',
-    
         ],
         output='screen'
     )
 
     return LaunchDescription([
-        bag_record,
+        realsense_node,
+        data_handler_node,
         data_handler_inertialsense_node,
-        pid_controller_node,
-        kalman_filter_cfg_node,
-        delayed_motor_play
+        kalman_filter_node,
+        bag_record,
+        motor_node,
     ])
-    
-    
 
 if __name__ == '__main__':
     generate_launch_description()
-
-    

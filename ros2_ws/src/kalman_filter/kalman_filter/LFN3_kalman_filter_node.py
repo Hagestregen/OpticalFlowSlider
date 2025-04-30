@@ -14,18 +14,18 @@ class KalmanFilterNode(Node):
         super().__init__('kalman_filter_node')
         
         # Declare parameters for Kalman filter initialization
-        self.declare_parameter('dt',                0.01)
-        self.declare_parameter('sigma_a',           0.1)
-        self.declare_parameter('sigma_flow',        0.05)
+        self.declare_parameter('dt',                0.014)
+        self.declare_parameter('sigma_a',           0.5)
+        self.declare_parameter('sigma_flow',        0.01)
         self.declare_parameter('sigma_b',           0.001)
         
         # Parameters for IMU filtering
-        self.declare_parameter('imu_cutoff_freq',   0.1)
-        self.declare_parameter('imu_sampling_freq', 100)
+        self.declare_parameter('imu_cutoff_freq',   2.5)
+        self.declare_parameter('imu_sampling_freq', 71)
         self.declare_parameter('imu_filter_order',  2)
         
         # OOSM
-        self.declare_parameter('enable_oosm',       False)
+        self.declare_parameter('enable_oosm',       True)
         
         # Get parameter values
         dt                  = self.get_parameter('dt').value
@@ -50,6 +50,8 @@ class KalmanFilterNode(Node):
         # sigma_b_new = bias_stability_g * g
         
         self.velocity_x = 0.0 
+        self.dt_sum = 0.0
+        self.dt_count = 0
         
         # QoS profile for optical flow messages
         qos_profile = QoSProfile(
@@ -65,12 +67,18 @@ class KalmanFilterNode(Node):
             sigma_flow=sigma_flow, 
             sigma_b=sigma_b)
         
+        self.get_logger().info(
+            f"Kalman Filter initialized with dt={dt}, sigma_a={sigma_a}, "
+            f"sigma_flow={sigma_flow}, sigma_b={sigma_b}"
+        )
+        
         # State and timing variables
         self.state_history = []
         self.last_imu_time = None
         
         # Filter state for incremental filtering of acceleration
-        self.filter_state = np.zeros(max(3, self.imu_order) - 1)  # Adjust based on filter order
+        # self.filter_state = np.zeros(max(3, self.imu_order) - 1)  # Adjust based on filter order
+        self.filter_state = np.zeros(self.imu_order)  # Adjust based on filter order
         
         # Subscriptions
         self.imu_sub = self.create_subscription(
@@ -80,19 +88,19 @@ class KalmanFilterNode(Node):
             10
         )
         
-        self.flow_sub = self.create_subscription(
-            Vector3Stamped,
-            '/optical_flow/LFN3_velocity',
-            self.flow_callback,
-            qos_profile
-        )
-        
         # self.flow_sub = self.create_subscription(
         #     Vector3Stamped,
-        #     '/optical_flow/LFN3_smooth_velocity',
+        #     '/optical_flow/LFN3_velocity',
         #     self.flow_callback,
         #     qos_profile
         # )
+        
+        self.flow_sub = self.create_subscription(
+            Vector3Stamped,
+            '/optical_flow/LFN3_smooth_velocity',
+            self.flow_callback,
+            qos_profile
+        )
         
         # Publishers
         self.p_publish = self.create_publisher(Float64MultiArray, 'kalman/p_matrix', 10)
@@ -103,6 +111,7 @@ class KalmanFilterNode(Node):
         
         # Timer
         self.timer = self.create_timer(dt, self.timer_callback)
+        self.timer = self.create_timer(0.5, self.kalman_gain_callback)
         
         
         self.get_logger().info('Kalman Filter Node (with OOSM) is up and running!')
@@ -141,9 +150,22 @@ class KalmanFilterNode(Node):
                 })
             return
         
-        dt = self.kf.dt_default if self.last_imu_time is None else max(imu_time - self.last_imu_time, 1e-3)
+        # dt = self.kf.dt_default if self.last_imu_time is None else max(imu_time - self.last_imu_time, 1e-3)
+        if self.last_imu_time is None:
+            dt = self.kf.dt_default
+        else:
+            dt = imu_time - self.last_imu_time
+            if dt <= 0:
+                print("Warning: Non-positive dt detected, using default")
+                dt = self.kf.dt_default
         
+        
+        self.dt_sum += dt
+        self.dt_count += 1
+        avg_dt = self.dt_sum / self.dt_count
+        # self.get_logger().info(f"Average dt: {avg_dt:.6f}")
         self.last_imu_time = imu_time
+        # self.get_logger().info(f"Time: {imu_time:.6f}, dt: {dt:.6f}")  # Log it
         
         # Apply low-pass filter to acceleration
         filtered_acceleration = self.low_pass_filter(acceleration)
@@ -155,11 +177,11 @@ class KalmanFilterNode(Node):
         # corrected_acceleration = filtered_acceleration - bias
         
         self.velocity_x += corr_accel * dt
-        
+
         self.imu_filt_pub.publish(Float64(data=self.velocity_x))
         
         # Update Kalman filter with filtered acceleration
-        self.kf.predict(corr_accel, dt=dt)  # Kalman filter expects acceleration
+        self.kf.predict(filtered_acceleration, dt=dt)  # Kalman filter expects acceleration
 
         
         # Buffer the current state (store copies to avoid mutation)
@@ -169,24 +191,23 @@ class KalmanFilterNode(Node):
                 'time': imu_time,
                 'x_hat': self.kf.x_hat.copy(),
                 'P': self.kf.P.copy(),
-                'accel': corr_accel,
+                'accel': filtered_acceleration,
                 
             })
             self.state_history = [
                 entry for entry in self.state_history if current_time - entry['time'] < 2.0
                 ]
 
-
     def flow_callback(self, msg):
         """
         When an optical flow measurement arrives, incorporate it as an out-of-sequence measurement.
         
         Steps:
-          1. Extract the measurement timestamp from the optical flow message.
-          2. Find the buffered state that was valid at or just before that time.
-          3. Reset the filter to that past state.
-          4. Apply the optical flow measurement update.
-          5. Replay (predict) all IMU measurements from that past state to the current time.
+        1. Extract the measurement timestamp from the optical flow message.
+        2. Find the buffered state that was valid at or just before that time.
+        3. Reset the filter to that past state.
+        4. Apply the optical flow measurement update.
+        5. Replay (predict) all IMU measurements from that past state to the current time.
         """
         velocity = msg.vector.x
         flow_time = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
@@ -201,6 +222,8 @@ class KalmanFilterNode(Node):
             self.get_logger().warn("No buffered IMU states available. Skipping OOSM update.")
             return
 
+        self.get_logger().info(f"OOSM triggered for optical flow measurement at time {flow_time:.6f}")
+        
         # Find the most recent state before (or equal to) the flow measurement time
         oosm_index = None
         for i, entry in enumerate(self.state_history):
@@ -225,33 +248,116 @@ class KalmanFilterNode(Node):
         self.kf.x_hat = state_entry['x_hat'].copy()
         self.kf.P = state_entry['P'].copy()
         rollback_time = state_entry['time']
-
+        current_time = self.get_clock().now().seconds_nanoseconds()[0] + self.get_clock().now().seconds_nanoseconds()[1] * 1e-9
+        time_diff = current_time - rollback_time
+        self.get_logger().info(f"Rolling back to state at time {rollback_time:.6f} (delay: {time_diff * 1000:.3f} ms)")
+        
+        
         # Apply the measurement update at the time of the optical flow
+        before_update = self.kf.x_hat[1, 0]
         self.kf.update(velocity)
-
+        after_update = self.kf.x_hat[1, 0]
+        self.get_logger().info(f"Velocity before OOSM update: {before_update:.3f}, after: {after_update:.3f}")
+        
         # Replay all IMU predictions from rollback_time to current time
         replay_entries = [entry for entry in self.state_history if entry['time'] > rollback_time]
         replay_entries.sort(key=lambda e: e['time'])
+        replay_count = len(replay_entries)
+        self.get_logger().info(f"Replaying {replay_count} IMU predictions")
+        
         previous_time = rollback_time
         for entry in replay_entries:
             dt = entry['time'] - previous_time
-            # Use the stored raw acceleration for replay (not filtered, to maintain consistency)
             self.kf.predict(entry['accel'], dt=dt)
             previous_time = entry['time']
-
+        
+        self.get_logger().info("OOSM replay complete, state updated to current time")
+        
         # Prune and publish state
         self.prune_state_history()
         self.publish_state()
 
+    # def flow_callback(self, msg):
+    #     """
+    #     When an optical flow measurement arrives, incorporate it as an out-of-sequence measurement.
+        
+    #     Steps:
+    #       1. Extract the measurement timestamp from the optical flow message.
+    #       2. Find the buffered state that was valid at or just before that time.
+    #       3. Reset the filter to that past state.
+    #       4. Apply the optical flow measurement update.
+    #       5. Replay (predict) all IMU measurements from that past state to the current time.
+    #     """
+    #     velocity = msg.vector.x
+    #     flow_time = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+        
+    #     if not self.enable_oosm:
+    #         self.kf.update(velocity)
+    #         self.publish_state()
+    #         return
+
+    #     # Ensure we have history
+    #     if not self.state_history:
+    #         self.get_logger().warn("No buffered IMU states available. Skipping OOSM update.")
+    #         return
+
+    #     # Find the most recent state before (or equal to) the flow measurement time
+    #     oosm_index = None
+    #     for i, entry in enumerate(self.state_history):
+    #         if entry['time'] > flow_time:
+    #             break
+    #         oosm_index = i
+
+    #     if oosm_index is None:
+    #         self.get_logger().warn("No buffered state is older than the optical flow measurement time.")
+    #         self.kf.update(velocity)
+    #         self.publish_state()
+    #         return
+
+    #     # Backup the current (latest) filter state
+    #     backup_state = {
+    #         'x_hat': self.kf.x_hat.copy(),
+    #         'P': self.kf.P.copy()
+    #     }
+        
+    #     # Roll back the filter to the state at the measurement time
+    #     state_entry = self.state_history[oosm_index]
+    #     self.kf.x_hat = state_entry['x_hat'].copy()
+    #     self.kf.P = state_entry['P'].copy()
+    #     rollback_time = state_entry['time']
+
+    #     # Apply the measurement update at the time of the optical flow
+    #     self.kf.update(velocity)
+
+    #     # Replay all IMU predictions from rollback_time to current time
+    #     replay_entries = [entry for entry in self.state_history if entry['time'] > rollback_time]
+    #     replay_entries.sort(key=lambda e: e['time'])
+    #     previous_time = rollback_time
+    #     for entry in replay_entries:
+    #         dt = entry['time'] - previous_time
+    #         # Use the stored raw acceleration for replay (not filtered, to maintain consistency)
+    #         self.kf.predict(entry['accel'], dt=dt)
+    #         previous_time = entry['time']
+
+    #     # Prune and publish state
+    #     self.prune_state_history()
+    #     self.publish_state()
+
     def timer_callback(self):
         self.publish_state()
+        
+    def kalman_gain_callback(self):
+        if self.kf.K_1 is not None:
+            self.get_logger().info(f"Kalman gain for velocity: {self.kf.K_1[1]}")
+        else:
+            self.get_logger().info("Kalman gain not available yet")
         
     def prune_state_history(self):
         """Remove old entries from the state history that are older than a given threshold."""
         if self.last_imu_time is None:
             return
 
-        threshold = 2.0  # seconds; reduced for efficiency
+        threshold = 1.0  # seconds; reduced for efficiency
         self.state_history = [
             entry for entry in self.state_history
             if self.last_imu_time - entry['time'] < threshold
@@ -274,6 +380,7 @@ class KalmanFilterNode(Node):
         p_msg = Float64MultiArray()
         p_msg.data = self.kf.P.flatten().tolist()
         self.p_publish.publish(p_msg)
+        
         
         # state_msg = Float32MultiArray()
         # state_msg.header.stamp = timestamp

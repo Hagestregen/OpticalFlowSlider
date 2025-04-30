@@ -7,7 +7,7 @@ import launch_ros.actions
 from launch.actions import ExecuteProcess, TimerAction
 import launch_ros.actions
 
-def get_unique_bag_folder(base_dir="my_rosbag", base_name="LFN3_notOOSM_KF_640"):
+def get_unique_bag_folder(base_dir="my_rosbag", base_name="LFN3_smooth_KF_640_a0p5_flow0p01_deque3_"):
     """
     Generate a unique folder path under base_dir with the base_name.
     If base_dir/base_name exists, increment a counter until a new folder name is found.
@@ -59,49 +59,18 @@ def generate_launch_description():
         executable='LFN3_kalman_filter_node',
         name='LFN3_kalman_filter_node',
         parameters=[{
-        'dt':                   0.01,
-        'sigma_a':              0.1,
+        'dt':                   0.014,
+        'sigma_a':              0.5,
         'sigma_flow':           0.01,  
         'sigma_b':              0.01,    
-        'imu_cutoff_freq':      2.5,
+        'imu_cutoff_freq':      5.0,
         'imu_sampling_freq':    71,
         'imu_filter_order':     2,
-        'enable_oosm':          False,
+        'enable_oosm':          True,
         }],
         output='screen'
     )
-    
-    # Start the RealSense node.
-    realsense_node = ExecuteProcess(
-        cmd=[
-            'ros2', 'launch',
-            'realsense2_camera', 'rs_launch.py',
 
-            # Enable Depth
-            'depth_module.enable:=true',
-            'depth_module.depth_profile:=640x480x30',
-            'align_depth.enable:=true',
-            
-            
-        
-
-            # Enable color at 640x480
-            'rgb_camera.color_profile:=640x480x30',     # 640x480x30
-            # 'rgb_camera.color_profile:=1280x720x30',    # 1280x720x30
-            # 'rgb_camera.color_profile:=960x540x30',     # 960x540x30
-            # 'rgb_camera.color_profile:=848x480x60',     # 848x480x60
-            # 'rgb_camera.color_profile:=848x480x30',     # 848x480x30
-
-            # 'enable_color:=true',
-            # 'color_width:=640',
-            # 'color_height:=480',
-            # 'color_fps:=30',
-
-            # Enable IMU (accel)
-            # 'enable_accel:=true'
-        ],
-        output='screen'
-        )
         
         
     

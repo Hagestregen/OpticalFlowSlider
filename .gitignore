@@ -26,3 +26,11 @@ ros2_ws/__pycache__
 ros2_ws/my_rosbag
 
 rosbags
+
+
+*.db3
+*.csv
+*.png
+*.jpg
+*.avi
+*.mp4

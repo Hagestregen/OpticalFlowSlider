@@ -163,11 +163,9 @@ def main(args=None):
         rclpy.spin(node)
     except KeyboardInterrupt:
         # controller.set_goal_velocity(0)
-        controller.self.get_logger().info("Disabling torque")
         controller.disable_torque()
-        controller.self.get_logger().info("Closing port")
         controller.close_port()
-        controller.self.get_logger().info("Destroying node")
+        controller.timer.cancel()
         node.destroy_node()
         rclpy.shutdown()
 

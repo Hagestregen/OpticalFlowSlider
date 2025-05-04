@@ -45,7 +45,11 @@ class MotorPublisherNode(Node):
         # Timers
         self.start_time = time.perf_counter()
         self.move_timer = self.create_timer(0.1, self.auto_move_and_publish)  # 10 Hz for movement
-        self.create_timer(0.001, self.publish_velocity)  # 1000 Hz for velocity
+        self.vel_timer=self.create_timer(0.001, self.publish_velocity)  # 1000 Hz for velocity
+        
+        # Sequence‐done flag
+        self.sequence_complete = False
+        self.get_logger().info("Motor Publisher Node Initialized")
 
     def publish_present_position(self, present_position, goal_position):
         """
@@ -89,15 +93,12 @@ class MotorPublisherNode(Node):
         else:
             # Check if all actions have been completed
             if self.current_index >= len(self.sequence):
-                self.get_logger().info("✅ All goal positions reached. Shutting down...")
+                self.get_logger().info("All goal positions reached. Shutting down...")
                 end_time = time.perf_counter()
                 self.get_logger().info(f"Time taken to reach goal position: {end_time - self.start_time:.2f} seconds")
-                self.destroy_timer(self.move_timer)
-                self.controller.disable_torque()
-                self.controller.close_port()
-                self.destroy_node()
-                rclpy.shutdown()
-                sys.exit(0)
+                self.move_timer.cancel()
+                self.vel_timer.cancel()
+                self.sequence_complete = True
                 return
 
             # Process the current action
@@ -108,12 +109,12 @@ class MotorPublisherNode(Node):
                     self.moving = True
                 present_position = self.controller.get_present_position()
                 if abs(present_position - action['position']) <= self.controller.MOVING_STATUS_THRESHOLD:
-                    self.get_logger().info(f"✅ Reached Goal Position: {action['position']}")
+                    self.get_logger().info(f"Reached Goal Position: {action['position']}")
                     self.moving = False
                     self.current_index += 1
             elif action['type'] == 'set_speed':
                 self.controller.set_vel_and_accel(action['speed'], action['accel'])
-                self.get_logger().info(f"🔹 Set velocity and acceleration to: {action['speed']} and {action['accel']}")
+                self.get_logger().info(f"Set velocity and acceleration to: {action['speed']} and {action['accel']}")
                 self.current_index += 1
             elif action['type'] == 'pause':
                 self.pausing = True
@@ -185,9 +186,10 @@ def main(args=None):
         {'type': 'move', 'position': 1800},
         {'type': 'set_speed', 'speed': 150, 'accel': 100},
         {'type': 'move', 'position': 1000},
-        {'type': 'pause', 'duration': 4.0},
+        {'type': 'pause', 'duration': 3.0},
         {'type': 'set_speed', 'speed': 25, 'accel': 5},
         {'type': 'move', 'position': 0},
+        {'type': 'pause', 'duration': 1.0},
     ]
     
     sequence2RepeaterSlow = [
@@ -250,12 +252,14 @@ def main(args=None):
     sequencePD = [
     {'type': 'set_speed', 'speed': 40, 'accel': 25},
     {'type': 'move', 'position': 1200},
+    {'type': 'pause', 'duration': 1.0},
     # {'type': 'pause', 'duration': 1.0},
     ]
     
     sequenceHome = [
     {'type': 'set_speed', 'speed': 40, 'accel': 25},
     {'type': 'move', 'position': 0},
+    {'type': 'pause', 'duration': 1.0},
     # {'type': 'pause', 'duration': 1.0},
 
     ]
@@ -268,18 +272,17 @@ def main(args=None):
     controller.enable_torque()
 
     # Create and spin the node
-    motor_node = MotorPublisherNode(controller, sequenceHome)
-    try:
-        rclpy.spin(motor_node)
-        controller.disable_torque()
-        controller.close_port()
-        motor_node.destroy_node()
-        rclpy.shutdown()
-    except KeyboardInterrupt:
-        controller.disable_torque()
-        controller.close_port()
-        motor_node.destroy_node()
-        rclpy.shutdown()
+    node = MotorPublisherNode(controller, sequencePD)
+    
+    while rclpy.ok() and not node.sequence_complete:
+        rclpy.spin_once(node, timeout_sec=0.5)
+    # Clean up exactly once
+    node.get_logger().info("Shutting down motor node...")
+    controller.disable_torque()
+    controller.close_port()
+    node.destroy_node()
+    rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()

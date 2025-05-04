@@ -7,7 +7,7 @@ import launch_ros.actions
 from launch.actions import ExecuteProcess, TimerAction
 import launch_ros.actions
 
-def get_unique_bag_folder(base_dir="my_rosbag", base_name="LFN3_smooth_KF_640_a0p25_flow0p01_Ed"):
+def get_unique_bag_folder(base_dir="my_rosbag", base_name="LFN3_smooth_KF_640"):
     """
     Generate a unique folder path under base_dir with the base_name.
     If base_dir/base_name exists, increment a counter until a new folder name is found.
@@ -129,8 +129,6 @@ def generate_launch_description():
             '/motor/control_input',
             '/slider/current_position',
             '/pid/output',
-            
-    
         ],
         output='screen'
     )

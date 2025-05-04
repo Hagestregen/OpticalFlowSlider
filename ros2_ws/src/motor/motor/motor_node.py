@@ -7,6 +7,8 @@ from motor_control import DynamixelMXController
 from utils import rpm_to_linear_velocity_mps
 import utils
 import sys
+import time
+
 
 class MotorPublisherNode(Node):
     """
@@ -40,10 +42,13 @@ class MotorPublisherNode(Node):
         self.pause_start_time = None  # Timestamp when pause starts
 
         # Timers
+        self.start_time  = time.perf_counter()
         self.move_timer = self.create_timer(0.1, self.auto_move_and_publish)  # 10 Hz for movement
         # self.velocity_timer = self.create_timer(0.001, self.publish_velocity_callback)  # 1000 Hz for velocity
         
         self.create_timer(0.001, self.publish_velocity)
+        
+
 
     def publish_present_position(self, present_position, goal_position):
         """
@@ -100,6 +105,8 @@ class MotorPublisherNode(Node):
         # Check if all goal positions have been reached
         if self.current_index >= len(self.controller.goal_positions):
             self.get_logger().info("✅ All goal positions reached. Shutting down...")
+            end_time = time.perf_counter()
+            self.get_logger().info(f"Time taken to reach goal position: {end_time - self.start_time:.2f} seconds")
             self.destroy_timer(self.move_timer)
             # self.destroy_timer(self.velocity_timer)
             self.controller.disable_torque()
@@ -160,6 +167,7 @@ class MotorPublisherNode(Node):
         # Check if the current goal is reached (only when not pausing)
         if not self.pausing and abs(present_position - goal_position) <= self.controller.MOVING_STATUS_THRESHOLD:
             self.get_logger().info(f"✅ Reached Goal Position: {goal_position}")
+            
             self.current_index += 1  # Move to the next position
 
 def main(args=None):

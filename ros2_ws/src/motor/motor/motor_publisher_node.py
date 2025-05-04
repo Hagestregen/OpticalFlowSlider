@@ -30,14 +30,14 @@ class MotorPublisherNode(Node):
     def control_callback(self, msg):
         # Convert linear velocity (m/s) to RPM
         linear_velocity = msg.data
-        self.get_logger().info(f"MotorNode: Recieved {linear_velocity}")
+        # self.get_logger().info(f"MotorNode: Recieved {linear_velocity}")
         # rpm = utils.linear_velocity_mps_to_rpm(linear_velocity)
         # raw_velocity = utils.rpm_to_raw(rpm)
         dxl_cmd = utils.linear_velocity_to_dynamixel_input(linear_velocity)
         velocity_limit = 100  # Replace with self.controller.get_velocity_limit() after adding
         # raw_velocity = max(min(raw_velocity, velocity_limit), -velocity_limit)
         dxl_cmd = max(min(dxl_cmd, velocity_limit), -velocity_limit)
-        self.get_logger().info(f"Setting goal velocity to {dxl_cmd}, in motor node")
+        # self.get_logger().info(f"Setting goal velocity to {dxl_cmd}, in motor node")
         self.controller.set_goal_velocity(dxl_cmd)
 
     def publish_velocity_callback(self):
@@ -162,9 +162,12 @@ def main(args=None):
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
-        controller.set_goal_velocity(0)
+        # controller.set_goal_velocity(0)
+        controller.self.get_logger().info("Disabling torque")
         controller.disable_torque()
+        controller.self.get_logger().info("Closing port")
         controller.close_port()
+        controller.self.get_logger().info("Destroying node")
         node.destroy_node()
         rclpy.shutdown()
 

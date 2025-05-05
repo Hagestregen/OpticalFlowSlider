@@ -264,6 +264,26 @@ def main(args=None):
 
     ]
     
+    sequencePD2 = [
+        {'type': 'set_speed', 'speed': 50, 'accel': 25},
+        {'type': 'pause', 'duration': 2.0},
+        {'type': 'move', 'position': 1800},
+        {'type': 'pause', 'duration': 3.0},
+        {'type': 'move', 'position': 1000},
+        {'type': 'pause', 'duration': 3.0},
+        {'type': 'move', 'position': 1800},
+        {'type': 'pause', 'duration': 3.0},
+        {'type': 'move', 'position': 800},
+        {'type': 'pause', 'duration': 1.0},
+        {'type': 'move', 'position': 1800},
+        {'type': 'pause', 'duration': 3.0},
+        {'type': 'move', 'position': 1200},
+        {'type': 'pause', 'duration': 1.0},
+        
+    # {'type': 'pause', 'duration': 1.0},
+
+]
+    
     # Initialize the motor controller
     controller = DynamixelMXController()  # Removed goal_positions as it's now in sequence
     controller.open_port()
@@ -272,7 +292,7 @@ def main(args=None):
     controller.enable_torque()
 
     # Create and spin the node
-    node = MotorPublisherNode(controller, sequencePD)
+    node = MotorPublisherNode(controller, sequencePD2)
     
     while rclpy.ok() and not node.sequence_complete:
         rclpy.spin_once(node, timeout_sec=0.5)

@@ -7,7 +7,7 @@ import launch_ros.actions
 from launch.actions import ExecuteProcess, TimerAction
 import launch_ros.actions
 
-def get_unique_bag_folder(base_dir="my_rosbag", base_name="LFN3_PD"):
+def get_unique_bag_folder(base_dir="my_rosbag", base_name="LFN3_PD_Motor"):
     """
     Generate a unique folder path under base_dir with the base_name.
     If base_dir/base_name exists, increment a counter until a new folder name is found.
@@ -43,6 +43,13 @@ def generate_launch_description():
         package='motor',
         executable='motor_publisher_node',
         name='motor_publisher_node',
+        output='screen'
+    )
+    
+    motor_node_pos = launch_ros.actions.Node(
+        package='motor',
+        executable='motor_kf_node',
+        name='motor_kf_node',
         output='screen'
     )
     # depth_calc_node = launch_ros.actions.Node(
@@ -159,7 +166,8 @@ def generate_launch_description():
         pid_controller_node,
         data_handler_inertialsense_node,
         kalman_filter_cfg_node,
-        motor_publisher_node,
+        # motor_publisher_node,
+        motor_node_pos,
     ])
     
     

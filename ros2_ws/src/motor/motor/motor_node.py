@@ -134,8 +134,8 @@ class MotorPublisherNode(Node):
                 self.get_logger().info("🔹 Set velocity and acceleration to: 25 and 10")
                 self.pausing = True
                 self.pause_start_time = self.get_clock().now()
-            # if self.current_index == 3:
-            if self.current_index == 1:
+            if self.current_index == 3:
+            # if self.current_index == 1:
                 self.controller.set_vel_and_accel(150, 35)
                 # self.controller.set_vel_and_accel(25, 10)   #Stationary test
                 self.get_logger().info("🔹 Set velocity and acceleration to: 150 and 35")

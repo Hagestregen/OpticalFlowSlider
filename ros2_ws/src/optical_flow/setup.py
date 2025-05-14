@@ -26,6 +26,8 @@ setup(
             'lucas_kanade_node = optical_flow.lucas_kanade_node:main',
             'raft_node = optical_flow.raft_node:main',
             'raft_direct_node = optical_flow.raft_direct_node:main',
+            'raft_small_node = optical_flow.raft_small_node:main',
+            'lucas_kanade_light_node = optical_flow.lucas_kanade_light_node:main',
         ],
     },
 )

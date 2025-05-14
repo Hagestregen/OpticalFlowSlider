@@ -94,7 +94,7 @@ def generate_launch_description():
         'Kp': 2.0,
         'Ki': 0.0,
         'Kd': 0.5,
-        'setpoint': 0.0,
+        'setpoint': -0.1,
         'alpha': 0.3,
         'dt': 0.01,
         'integral_limit': 10.0,
@@ -166,8 +166,8 @@ def generate_launch_description():
         pid_controller_node,
         data_handler_inertialsense_node,
         kalman_filter_cfg_node,
-        # motor_publisher_node,
-        motor_node_pos,
+        motor_publisher_node,
+        # motor_node_pos,
     ])
     
     

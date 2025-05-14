@@ -135,6 +135,181 @@ class MotorPublisherNode(Node):
 def main(args=None):
     """Main function to initialize and run the ROS2 node."""
     rclpy.init(args=args)
+    
+    # Experiment 1:
+    #Motion Tests
+    goal_positions = [750, 2000, 200, 2000, 500, 2400, 500, 1000, 0]
+    experiment1_1 = [
+    {'type': 'set_speed', 'speed': 100, 'accel': 20},
+    {'type': 'move', 'position': 750},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 2000},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 200},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 2000},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 500},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 2400},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 500},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position':1000},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 50},
+    {'type': 'pause', 'duration': 1.0},
+    # {'type': 'pause', 'duration': 1.0},
+    ]
+    
+    experiment1_2 = [
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'set_speed', 'speed': 100, 'accel': 20},
+    {'type': 'move', 'position': 750},
+    {'type': 'move', 'position': 2000},
+    {'type': 'set_speed', 'speed': 25, 'accel': 20},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 200},
+    {'type': 'set_speed', 'speed': 150, 'accel': 35},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 500},
+    {'type': 'set_speed', 'speed': 350, 'accel': 50},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 2400},
+    {'type': 'move', 'position': 500},
+    {'type': 'move', 'position':1000},
+    {'type': 'set_speed', 'speed': 150, 'accel': 35},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'set_speed', 'speed': 25, 'accel': 10},
+    {'type': 'move', 'position': 50},
+    {'type': 'pause', 'duration': 1.0},
+    # {'type': 'pause', 'duration': 1.0},
+    ]
+    
+    experiment1_3 = [
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'set_speed', 'speed': 100, 'accel': 10},
+    {'type': 'move', 'position': 1500},
+    {'type': 'set_speed', 'speed': 150, 'accel': 35},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 2000},
+    {'type': 'set_speed', 'speed': 30, 'accel': 10},
+    {'type': 'pause', 'duration': 2.0},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'set_speed', 'speed': 75, 'accel': 0},
+    {'type': 'move', 'position': 1500},
+    {'type': 'set_speed', 'speed': 25, 'accel': 50},
+    {'type': 'move', 'position': 200},
+    {'type': 'set_speed', 'speed': 100, 'accel': 0},
+    {'type': 'move', 'position': 1700},
+    {'type': 'pause', 'duration': 3.0},
+    {'type': 'set_speed', 'speed': 25, 'accel': 10},
+    {'type': 'move', 'position': 500},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 50},
+    {'type': 'pause', 'duration': 1.0},
+    ]
+    
+    experiment1_4 = [
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'set_speed', 'speed': 200, 'accel': 5},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 50},
+    {'type': 'pause', 'duration': 1.0},
+    ]
+    
+    
+        
+    experiment1_5 = [
+    {'type': 'pause', 'duration': 1.5},
+    {'type': 'set_speed', 'speed': 250, 'accel': 75},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 50},
+    {'type': 'pause', 'duration': 1.0},
+    ]
+    
+    experiment1_6 = [
+    {'type': 'set_speed', 'speed': 300, 'accel': 10},
+    {'type': 'move', 'position': 750},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 2000},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 200},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 2000},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 500},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 2400},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 500},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position':1000},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 50},
+    {'type': 'pause', 'duration': 1.0},
+    # {'type': 'pause', 'duration': 1.0},
+    ]
+    
+    #Occlusion and Stationary tests
+    experiment1_7 = [
+    {'type': 'set_speed', 'speed': 25, 'accel': 10},
+    {'type': 'move', 'position': 1500},
+    {'type': 'pause', 'duration': 10.0},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 50},
+    {'type': 'pause', 'duration': 1.0},
+    ]
+    
+    experiment1_8 = [
+    {'type': 'set_speed', 'speed': 50, 'accel': 10},
+    {'type': 'move', 'position': 2000},
+    {'type': 'pause', 'duration': 2.0},
+    {'type': 'set_speed', 'speed': 80, 'accel': 10},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 300},
+    {'type': 'set_speed', 'speed': 25, 'accel': 10},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 50},
+    {'type': 'pause', 'duration': 1.0},
+    ]
+    
+    
+    # Experiment 2:
 
     # Define the sequence of actions (replicates original behavior)
     sequence = [
@@ -191,6 +366,8 @@ def main(args=None):
         {'type': 'move', 'position': 0},
         {'type': 'pause', 'duration': 1.0},
     ]
+    
+    
     
     sequence2RepeaterSlow = [
     {'type': 'set_speed', 'speed': 50, 'accel': 10},
@@ -292,7 +469,7 @@ def main(args=None):
     controller.enable_torque()
 
     # Create and spin the node
-    node = MotorPublisherNode(controller, sequencePD2)
+    node = MotorPublisherNode(controller, experiment1_5)
     
     while rclpy.ok() and not node.sequence_complete:
         rclpy.spin_once(node, timeout_sec=0.5)

@@ -7,7 +7,7 @@ import launch_ros.actions
 from launch.actions import ExecuteProcess, TimerAction
 import launch_ros.actions
 
-def get_unique_bag_folder(base_dir="my_rosbag", base_name="Experiment1_640"):
+def get_unique_bag_folder(base_dir="my_rosbag", base_name="Recording1_5_960"):
     """
     Generate a unique folder path under base_dir with the base_name.
     If base_dir/base_name exists, increment a counter until a new folder name is found.
@@ -31,10 +31,18 @@ def generate_launch_description():
     unique_folder, bag_name = get_unique_bag_folder()
     
 
+    # motor_node_pos = launch_ros.actions.Node(
+    #     package='motor',
+    #     executable='motor_node',
+    #     name='motor_node',
+    #     output='screen'
+    # )
+    
+        
     motor_node_pos = launch_ros.actions.Node(
         package='motor',
-        executable='motor_node',
-        name='motor_node',
+        executable='motor_kf_node',
+        name='motor_kf_node',
         output='screen'
     )
     
@@ -71,9 +79,9 @@ def generate_launch_description():
             # Enable color at 640x480
             # 'rgb_camera.color_profile:=640x480x30',     # 640x480x30
             # 'rgb_camera.color_profile:=1280x720x30',    # 1280x720x30
-            # 'rgb_camera.color_profile:=960x540x30',     # 960x540x30
+            'rgb_camera.color_profile:=960x540x30',     # 960x540x30
             # 'rgb_camera.color_profile:=848x480x60',     # 848x480x60
-            'rgb_camera.color_profile:=848x480x30',     # 848x480x30
+            # 'rgb_camera.color_profile:=848x480x30',     # 848x480x30
 
             # 'enable_color:=true',
             # 'color_width:=640',
@@ -108,6 +116,12 @@ def generate_launch_description():
             '/motor/control_input',
             '/slider/current_position',
             '/camera/depth/median_distance',
+            '/camera/camera/color/camera_info',
+            '/camera/camera/aligned_depth_to_color/image_raw',
+            '/camera/camera/depth/image_rect_raw',
+            '/camera/camera/depth/camera_info',
+            '/camera/camera/aligned_depth_to_color/camera_info',
+            
     
         ],
         output='screen'

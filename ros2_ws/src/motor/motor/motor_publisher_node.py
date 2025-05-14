@@ -15,6 +15,13 @@ class MotorPublisherNode(Node):
             '/motor/present_velocity',
             10
         )
+        
+        #Create a publisher for the integrated velocity position
+        self.integrated_velocity_pub = self.create_publisher(
+            Float64,
+            '/motor/integrated_velocity',
+            10
+        )
 
         # Subscriber to PID control input
         self.control_sub = self.create_subscription(
@@ -47,6 +54,11 @@ class MotorPublisherNode(Node):
         msg = Float64()
         msg.data = linear_velocity
         self.velocity_pub.publish(msg)
+        integrated_velocity = utils.integrate_velocity(linear_velocity)
+        integrated_velocity_msg = Float64()
+        integrated_velocity_msg.data = integrated_velocity
+        self.integrated_velocity_pub.publish(integrated_velocity_msg)
+
 
 class DynamixelMXController:
     # Control Table Addresses (from MX-106T/R manual)

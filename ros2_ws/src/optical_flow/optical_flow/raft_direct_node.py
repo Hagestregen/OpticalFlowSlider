@@ -32,15 +32,22 @@ def pad_to_multiple(img, multiple=8):
 
 class RaftOpticalFlowNode(Node):
     def __init__(self):
-        super().__init__('raft_optical_flow_node')
+        super().__init__('raft_large_node')
         
         small = False  # Set to True for RAFT-small, False for RAFT-large
         self.writeCsv = False
         self.focal_length_x = None
         
         # Frame settings
-        self.width = 640
-        self.height = 480
+        # self.width = 640
+        # self.height = 480
+        # Declare parameters for width and height with default values
+        self.declare_parameter('width', 640)
+        self.declare_parameter('height', 480)
+        
+        # Get the parameter values
+        self.width = self.get_parameter('width').get_parameter_value().integer_value
+        self.height = self.get_parameter('height').get_parameter_value().integer_value
         self.width_depth = 640
         self.height_depth = 480
         self.fps = 30
@@ -84,6 +91,7 @@ class RaftOpticalFlowNode(Node):
         # Load RAFT model
         self.get_logger().info("Loading RAFT model…")
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        print(f"Using device: {self.device}")
         if small:
             weights = Raft_Small_Weights.DEFAULT
             self.get_logger().info("Using RAFT-small model")

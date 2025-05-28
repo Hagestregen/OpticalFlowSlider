@@ -136,6 +136,71 @@ def main(args=None):
     """Main function to initialize and run the ROS2 node."""
     rclpy.init(args=args)
     
+    #Kalman Filter Combined:
+    kalman_filter_movement = [
+    {'type': 'pause', 'duration': 3.0},
+    {'type': 'set_speed', 'speed': 100, 'accel': 20},
+    {'type': 'move', 'position': 750},
+    {'type': 'move', 'position': 2000},
+    {'type': 'set_speed', 'speed': 25, 'accel': 20},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 200},
+    {'type': 'set_speed', 'speed': 150, 'accel': 35},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 500},
+    {'type': 'set_speed', 'speed': 350, 'accel': 50},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 2400},
+    {'type': 'move', 'position': 500},
+    {'type': 'move', 'position':1000},
+    {'type': 'set_speed', 'speed': 150, 'accel': 35},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'set_speed', 'speed': 25, 'accel': 10},
+    {'type': 'move', 'position': 50},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'set_speed', 'speed': 100, 'accel': 10},
+    {'type': 'move', 'position': 1500},
+    {'type': 'set_speed', 'speed': 150, 'accel': 35},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 2000},
+    {'type': 'set_speed', 'speed': 30, 'accel': 10},
+    {'type': 'pause', 'duration': 2.0},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'set_speed', 'speed': 75, 'accel': 0},
+    {'type': 'move', 'position': 1500},
+    {'type': 'set_speed', 'speed': 25, 'accel': 50},
+    {'type': 'move', 'position': 200},
+    {'type': 'set_speed', 'speed': 100, 'accel': 0},
+    {'type': 'move', 'position': 1700},
+    {'type': 'pause', 'duration': 3.0},
+    {'type': 'set_speed', 'speed': 25, 'accel': 10},
+    {'type': 'move', 'position': 500},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'set_speed', 'speed': 40, 'accel': 5},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'move', 'position': 2000},
+    {'type': 'move', 'position': 200},
+    {'type': 'set_speed', 'speed': 25, 'accel': 10},
+    {'type': 'pause', 'duration': 1.0},
+    {'type': 'move', 'position': 50},
+    {'type': 'pause', 'duration': 1.0},
+    ]
+    
     # Experiment 1:
     #Motion Tests
     goal_positions = [750, 2000, 200, 2000, 500, 2400, 500, 1000, 0]
@@ -214,7 +279,7 @@ def main(args=None):
     
     experiment1_4 = [
     {'type': 'pause', 'duration': 1.0},
-    {'type': 'set_speed', 'speed': 200, 'accel': 5},
+    {'type': 'set_speed', 'speed': 40, 'accel': 5},
     {'type': 'move', 'position': 2000},
     {'type': 'move', 'position': 200},
     {'type': 'move', 'position': 2000},
@@ -235,6 +300,29 @@ def main(args=None):
     {'type': 'move', 'position': 50},
     {'type': 'pause', 'duration': 1.0},
     ]
+    # experiment1_4 = [
+    # {'type': 'pause', 'duration': 1.0},
+    # {'type': 'set_speed', 'speed': 200, 'accel': 5},
+    # {'type': 'move', 'position': 2000},
+    # {'type': 'move', 'position': 200},
+    # {'type': 'move', 'position': 2000},
+    # {'type': 'move', 'position': 200},
+    # {'type': 'move', 'position': 2000},
+    # {'type': 'move', 'position': 200},
+    # {'type': 'move', 'position': 2000},
+    # {'type': 'move', 'position': 200},
+    # {'type': 'move', 'position': 2000},
+    # {'type': 'move', 'position': 200},
+    # {'type': 'move', 'position': 2000},
+    # {'type': 'move', 'position': 200},
+    # {'type': 'move', 'position': 2000},
+    # {'type': 'move', 'position': 200},
+    # {'type': 'move', 'position': 2000},
+    # {'type': 'move', 'position': 200},
+    # {'type': 'pause', 'duration': 1.0},
+    # {'type': 'move', 'position': 50},
+    # {'type': 'pause', 'duration': 1.0},
+    # ]
     
     
         
@@ -321,8 +409,13 @@ def main(args=None):
         {'type': 'set_speed', 'speed': 30, 'accel': 10},
         {'type': 'pause', 'duration': 2.0},
         {'type': 'move', 'position': 200},
+        {'type': 'set_speed', 'speed': 50, 'accel': 25},
+        {'type': 'pause', 'duration': 2.0},
+        {'type': 'move', 'position': 1800},
+        {'type': 'pause', 'duration': 3.0},
+        {'type': 'move', 'position': 1000},
         {'type': 'move', 'position': 2000},
-        {'type': 'set_speed', 'speed': 75, 'accel': 0},
+        {'type': 'set_speed', 'speed': 75, 'accel': 15},
         {'type': 'move', 'position': 1500},
         {'type': 'set_speed', 'speed': 25, 'accel': 50},
         {'type': 'move', 'position': 200},
@@ -331,7 +424,7 @@ def main(args=None):
         {'type': 'pause', 'duration': 3.0},
         {'type': 'set_speed', 'speed': 25, 'accel': 10},
         {'type': 'move', 'position': 500},
-        {'type': 'set_speed', 'speed': 100, 'accel': 0},
+        {'type': 'set_speed', 'speed': 100, 'accel': 10},
         {'type': 'move', 'position': 1700},
         {'type': 'move', 'position': 1300},
         {'type': 'move', 'position': 1700},
@@ -344,13 +437,14 @@ def main(args=None):
         {'type': 'move', 'position': 2000},
         {'type': 'move', 'position': 1700},
         {'type': 'move', 'position': 2000},
+        {'type': 'move', 'position': 700},
         {'type': 'set_speed', 'speed': 350, 'accel': 100},
         {'type': 'pause', 'duration': 5.0},
         {'type': 'move', 'position': 2400},
         {'type': 'pause', 'duration': 1.0},
         {'type': 'set_speed', 'speed': 200, 'accel': 10},
         {'type': 'move', 'position': 1000},
-        {'type': 'set_speed', 'speed': 200, 'accel': 5},
+        {'type': 'set_speed', 'speed': 200, 'accel': 80},
         {'type': 'move', 'position': 2300},
         {'type': 'pause', 'duration': 4.0},
         {'type': 'set_speed', 'speed': 250, 'accel': 50},
@@ -469,7 +563,7 @@ def main(args=None):
     controller.enable_torque()
 
     # Create and spin the node
-    node = MotorPublisherNode(controller, experiment1_5)
+    node = MotorPublisherNode(controller, sequence)
     
     while rclpy.ok() and not node.sequence_complete:
         rclpy.spin_once(node, timeout_sec=0.5)

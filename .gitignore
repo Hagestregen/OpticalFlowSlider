@@ -34,3 +34,4 @@ rosbags
 *.jpg
 *.avi
 *.mp4
+*.log

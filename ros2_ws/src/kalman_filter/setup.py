@@ -24,6 +24,7 @@ setup(
             'LFN3_kalman_filter_node = kalman_filter.LFN3_kalman_filter_node:main',
             'raft_kalman_filter_node = kalman_filter.raft_kalman_filter_node:main',
             'LK_kalman_filter_node = kalman_filter.LK_kalman_filter_node:main',
+            'kalman_filter_gazebo_node = kalman_filter.kalman_filter_gazebo_node:main',
         ],
     },
 )

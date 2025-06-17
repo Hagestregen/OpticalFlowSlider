@@ -54,7 +54,7 @@ def generate_launch_description():
     # Declare launch argument for base_name
     base_name_arg = DeclareLaunchArgument(
         'base_name',
-        default_value='Recording1_5_960',
+        default_value='Recording_x',
         description='Base name for the bag file folder'
     )
     

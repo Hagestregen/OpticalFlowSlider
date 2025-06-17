@@ -113,57 +113,57 @@ def generate_launch_description():
     #     executable='LK_kalman_filter_node',
     #     name='LK_kalman_filter_node',
     #     parameters=[{
+            # 'dt':                   0.014,
+            # 'sigma_a':              0.25,
+            # 'sigma_flow':           0.005,  
+            # 'sigma_b':              0.05,  
+            # # 'sigma_b':              0.1,   
+            # 'imu_cutoff_freq':      20.0,
+            # 'imu_sampling_freq':    71,
+            # 'imu_filter_order':     2,
+            # 'enable_oosm':          True,
+    #     }],
+    #     output='screen'
+    # )
+    
+    
+    ## LFN3
+    kalman_filter_cfg_node = launch_ros.actions.Node(
+        package='kalman_filter',
+        executable='LFN3_kalman_filter_node',
+        name='LFN3_kalman_filter_node',
+        parameters=[{
+            'dt':                   0.014,
+            'sigma_a':              0.1,
+            'sigma_flow':           0.01,  
+            'sigma_b':              0.05,  
+            # 'sigma_b':              0.1,   
+            'imu_cutoff_freq':      14.0,
+            'imu_sampling_freq':    71.4,
+            'imu_filter_order':     2,
+            'enable_oosm':          False,
+        }],
+        output='screen'
+    )
+    
+    # ## RAFT
+    # kalman_filter_cfg_node = launch_ros.actions.Node(
+    #     package='kalman_filter',
+    #     executable='raft_kalman_filter_node',
+    #     name='raft_kalman_filter_node',
+    #     parameters=[{
     #         'dt':                   0.014,
     #         'sigma_a':              0.25,
     #         'sigma_flow':           0.005,  
     #         'sigma_b':              0.05,  
     #         # 'sigma_b':              0.1,   
-    #         'imu_cutoff_freq':      20.0,
+    #         'imu_cutoff_freq':      15.0,
     #         'imu_sampling_freq':    71,
     #         'imu_filter_order':     2,
     #         'enable_oosm':          True,
     #     }],
     #     output='screen'
     # )
-    
-    
-    # ## LFN3
-    # kalman_filter_cfg_node = launch_ros.actions.Node(
-    #     package='kalman_filter',
-    #     executable='LFN3_kalman_filter_node',
-    #     name='LFN3_kalman_filter_node',
-    #     parameters=[{
-    #         'dt':                   0.014,
-    #         'sigma_a':              0.25,
-    #         'sigma_flow':           0.05,  
-    #         'sigma_b':              0.05,  
-    #         # 'sigma_b':              0.1,   
-    #         'imu_cutoff_freq':      20.0,
-    #         'imu_sampling_freq':    71,
-    #         'imu_filter_order':     2,
-    #         'enable_oosm':          True,
-    #     }],
-    #     output='screen'
-    # )
-    
-    ## RAFT
-    kalman_filter_cfg_node = launch_ros.actions.Node(
-        package='kalman_filter',
-        executable='raft_kalman_filter_node',
-        name='raft_kalman_filter_node',
-        parameters=[{
-            'dt':                   0.014,
-            'sigma_a':              0.5,
-            'sigma_flow':           0.005,  
-            'sigma_b':              0.05,  
-            # 'sigma_b':              0.1,   
-            'imu_cutoff_freq':      15.0,
-            'imu_sampling_freq':    71,
-            'imu_filter_order':     2,
-            'enable_oosm':          True,
-        }],
-        output='screen'
-    )
 
     return LaunchDescription([
         base_name_arg,

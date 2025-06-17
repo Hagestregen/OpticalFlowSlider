@@ -1,3 +1,76 @@
+# import rclpy
+# from rclpy.node import Node
+# import numpy as np
+# from sensor_msgs.msg import PointCloud2, Range
+# from sensor_msgs_py import point_cloud2
+
+
+# class DepthCalculationNode(Node):
+#     def __init__(self):
+#         super().__init__('depth_calculation_node')
+
+#         self.declare_parameter('depth_mode', 'ROI')  # Optional: not used here but kept for compatibility
+
+#         self.depth_sub = self.create_subscription(
+#             PointCloud2,
+#             '/camera/front/depth/color/points',
+#             self.pointcloud_callback,
+#             10
+#         )
+
+#         self.publisher = self.create_publisher(Range, '/camera/depth/median_distance', 10)
+#         self.latest_z_values = None
+
+#         self.timer = self.create_timer(0.1, self.calculate_and_publish)
+
+#     def pointcloud_callback(self, msg):
+#         """Extract Z (depth) values from the PointCloud2 message."""
+#         points = point_cloud2.read_points(
+#             msg, field_names=('x', 'y', 'z'), skip_nans=True
+#         )
+#         z_values = [p[2] for p in points if not np.isnan(p[2]) and p[2] > 0.0]
+
+#         if len(z_values) == 0:
+#             self.get_logger().warn("No valid depth values found in point cloud.")
+#             self.latest_z_values = None
+#         else:
+#             self.latest_z_values = z_values
+
+#     def calculate_and_publish(self):
+#         """Publish the median Z (depth) value as a Range message."""
+#         if self.latest_z_values is None:
+#             return
+
+#         median_depth = np.median(self.latest_z_values)
+
+#         msg = Range()
+#         msg.header.stamp = self.get_clock().now().to_msg()
+#         msg.header.frame_id = "camera_front_depth_frame"
+#         msg.radiation_type = Range.INFRARED
+#         msg.field_of_view = 0.1
+#         msg.min_range = 0.1
+#         msg.max_range = 10.0
+#         msg.range = float(median_depth)
+
+#         self.publisher.publish(msg)
+#         self.get_logger().info(f"Published median depth: {median_depth:.3f} m")
+
+
+# def main(args=None):
+#     rclpy.init(args=args)
+#     node = DepthCalculationNode()
+#     try:
+#         rclpy.spin(node)
+#     except KeyboardInterrupt:
+#         node.get_logger().info('Shutting down depth_calculation_node')
+#     finally:
+#         rclpy.shutdown()
+
+
+# if __name__ == '__main__':
+#     main()
+
+
 import rclpy
 from rclpy.node import Node
 import numpy as np
@@ -22,6 +95,7 @@ class DepthCalculationNode(Node):
             self.depth_callback,
             10
         )
+        
         
         # Publisher for median depth with timestamp
         self.publisher = self.create_publisher(Range, '/camera/depth/median_distance', 10)

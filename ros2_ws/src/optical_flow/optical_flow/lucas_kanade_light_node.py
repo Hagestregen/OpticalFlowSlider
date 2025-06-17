@@ -18,17 +18,28 @@ from collections import deque
 
 class LucasKanadeNode(Node):
     def __init__(self):
-        super().__init__('lucas_kanade_light_node')
+        super().__init__('lucas_kanade_node')
         
         # self.width = 640
         # self.height = 480
         # Declare parameters for width and height with default values
         self.declare_parameter('width', 640)
         self.declare_parameter('height', 480)
+        self.declare_parameter('max_speed', 0.6)
+        self.declare_parameter('clip_limit', 2.0)
+        self.declare_parameter('tile_grid', [8, 8])
+        self.max_speed = self.get_parameter('max_speed').value
+        self.visualize = False  # Set to False to disable visualization
+
         
         # Get the parameter values
         self.width = self.get_parameter('width').get_parameter_value().integer_value
         self.height = self.get_parameter('height').get_parameter_value().integer_value
+        self.max_speed = self.get_parameter('max_speed').value
+        # self.apply_gaussian = self.get_parameter('apply_gaussian').value
+        clip = self.get_parameter('clip_limit').value
+        grid = tuple(self.get_parameter('tile_grid').value)
+        
         self.width_depth = 640
         self.height_depth = 480
         self.fps = 30
@@ -38,7 +49,12 @@ class LucasKanadeNode(Node):
         
         self.criteria_subpix = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 0.001)
 
+         # CLAHE instance
+        self.clahe = cv2.createCLAHE(clipLimit=clip, tileGridSize=grid)
+        self.apply_CLAHE = False  # Set to False to disable CLAHE
+        self.apply_gaussian = False  # Set to False to disable Gaussian Blur
         
+         
         # Prepare CSV file for inference times
         if self.writeCsv:
             self.csv_filename = f"lk_light_{self.width}x{self.height}.csv"
@@ -130,11 +146,19 @@ class LucasKanadeNode(Node):
             return
 
         # Convert the frame to grayscale.
+        frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        
 
         # Retrieve current timestamp from the image header (in seconds).
         current_stamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
 
+        # CLAHE
+        if self.apply_CLAHE:
+            gray = self.clahe.apply(gray)
+        # Optional Gaussian Blur
+        if self.apply_gaussian:
+            gray = cv2.GaussianBlur(gray, (3, 3), 0)
         
         
         if self.prev_gray is None:
@@ -217,17 +241,33 @@ class LucasKanadeNode(Node):
         
         
         # self.get_logger().info(f"Published optical flow velocity: {vel_msg.vector.x:.3f} m/s")
+        # Visualization (scaled arrows + tracked points)
+        if self.visualize:
+            vis = frame.copy()
+            mask = np.zeros_like(frame)
+            step_px = 20  # px length for max_speed m/s
 
-        # (Optional) Visualization: draw optical flow tracks.
-        # mask = np.zeros_like(frame)
-        # for new, old in zip(good_new, good_old):
-        #     a, b = new.ravel().astype(int)
-        #     c, d = old.ravel().astype(int)
-        #     mask = cv2.line(mask, (a, b), (c, d), (0, 255, 0), 2)
-        #     frame = cv2.circle(frame, (a, b), 5, (0, 0, 255), -1)
-        # output = cv2.add(frame, mask)
-        # cv2.imshow("Lucas-Kanade Optical Flow", output)
-        # cv2.waitKey(1)
+            for new_pt, old_pt in zip(good_new, good_old):
+                x1, y1 = new_pt.ravel()
+                x0, y0 = old_pt.ravel()
+                u_px = x1 - x0
+                v_px = y1 - y0
+                # to m/s
+                u_mps = (u_px / dt) * self.pixel_to_meter
+                v_mps = (v_px / dt) * self.pixel_to_meter
+                # scale arrow
+                dx = int((u_mps / self.max_speed) * step_px)
+                dy = int((v_mps / self.max_speed) * step_px)
+                start = (int(x0), int(y0))
+                end   = (int(x0 + dx), int(y0 + dy))
+                mask = cv2.line(mask, start, end, (0,255,0), 2)
+                vis  = cv2.circle(vis, start, 3, (0,0,255), -1)
+
+            out_img = cv2.add(vis, mask)
+            cv2.imshow("LK Flow (scaled)", out_img)
+            cv2.waitKey(1)
+        
+        
 
         # Update the previous frame, feature points, and timestamp for the next callback.
         self.prev_gray = gray.copy()

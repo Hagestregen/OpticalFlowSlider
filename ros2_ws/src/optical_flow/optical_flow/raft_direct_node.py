@@ -45,13 +45,25 @@ class RaftOpticalFlowNode(Node):
         self.declare_parameter('width', 640)
         self.declare_parameter('height', 480)
         
+        self.declare_parameter('visualize', False)
+        self.declare_parameter('dense_viz', False)
+        self.declare_parameter('max_speed', 0.6) 
+        
         # Get the parameter values
         self.width = self.get_parameter('width').get_parameter_value().integer_value
         self.height = self.get_parameter('height').get_parameter_value().integer_value
+        self.declare_parameter('dense_threshold', 0.001)  # flows below 1 cm/s will be black
+        self.dense_threshold = self.get_parameter('dense_threshold').value
+        self.visualize = self.get_parameter('visualize').value
+        self.dense_viz = self.get_parameter('dense_viz').value
+        self.max_speed = self.get_parameter('max_speed').value
+        
         self.width_depth = 640
         self.height_depth = 480
         self.fps = 30
-        self.pixel_to_meter = 0.000857  # Will be set after receiving camera info
+        self.pixel_to_meter = None  # Will be set after receiving camera info
+        self.focal_length_x = None
+        self.median_depth   = None
 
 
         
@@ -111,11 +123,12 @@ class RaftOpticalFlowNode(Node):
             self.get_logger().info(f"Received focal length fx = {self.focal_length_x:.2f} px")
 
     def depth_callback(self, msg: Range):
+        # store the latest depth
+        self.median_depth = float(msg.range)
+        # if we already know fx, compute pixel_to_meter
         if self.focal_length_x is not None:
-            self.pixel_to_meter = msg.range / self.focal_length_x
-            self.get_logger().info(f"pixel_to_meter updated to {self.pixel_to_meter:.6f} m/px")
-        else:
-            self.get_logger().warn("Focal length not yet received; cannot update pixel_to_meter")
+            self.pixel_to_meter = self.median_depth / self.focal_length_x
+            # self.get_logger().info(f"Updated pixel_to_meter: {self.pixel_to_meter:.6f}")
 
     def image_callback(self, msg: Image):
         if self.writeCsv:
@@ -155,7 +168,12 @@ class RaftOpticalFlowNode(Node):
         flow = flows[-1][0].cpu().numpy()
 
         # Compute mean horizontal velocity (px→m)
-        vx = float((flow[0] / dt).mean() * self.pixel_to_meter)
+        # vx = float((flow[0] / dt).mean() * self.pixel_to_meter)
+        # Compute median horizontal velocity (px→m)
+        # vx = float((flow[0] / dt).median() * self.pixel_to_meter)
+        u_med = np.median(flow[0])        # median over all pixels in the x-flow channel
+        vx    = float(u_med / dt * self.pixel_to_meter)
+        
 
         # Publish raw velocity
         raw_msg = Vector3Stamped()
@@ -174,6 +192,71 @@ class RaftOpticalFlowNode(Node):
         smooth_msg.vector.y = 0.0
         smooth_msg.vector.z = 0.0
         self.smooth_pub.publish(smooth_msg)
+        
+        # visualization
+        if self.visualize or self.dense_viz:
+            flow_u = flow[0]
+            flow_v = flow[1]
+
+        # if self.visualize:
+        #     vis = frame.copy()
+        #     mask = np.zeros_like(frame)
+        #     step = 20
+        #     for y in range(0, self.height, step):
+        #         for x in range(0, self.width, step):
+        #             dx_px = flow_u[y, x]
+        #             dy_px = flow_v[y, x]
+        #             u_mps = (dx_px / dt) * self.pixel_to_meter
+        #             v_mps = (dy_px / dt) * self.pixel_to_meter
+        #             dx = int((u_mps / self.max_speed) * step)
+        #             dy = int((v_mps / self.max_speed) * step)
+        #             pt1 = (x, y)
+        #             pt2 = (x + dx, y + dy)
+        #             mask = cv2.line(mask, pt1, pt2, (0,255,0), 1)
+        #             # vis  = cv2.circle(vis, pt1, 2, (0,0,255), -1)
+        #     cv2.imshow("RAFT Sparse Flow", cv2.add(vis, mask))
+        #     cv2.waitKey(1)
+        if self.visualize:
+            vis = frame.copy()
+            mask = np.zeros_like(frame)
+            step = 40  # grid spacing in px
+            for y in range(0, self.height, step):
+                for x in range(0, self.width, step):
+                    dx_px = flow_u[y, x]
+                    dy_px = flow_v[y, x]
+                    u_mps = (dx_px / dt) * self.pixel_to_meter
+                    v_mps = (dy_px / dt) * self.pixel_to_meter
+                    dx = int((u_mps / self.max_speed) * step)
+                    dy = int((v_mps / self.max_speed) * step)
+                    pt1 = (x, y)
+                    pt2 = (x + dx, y + dy)
+                    mask = cv2.arrowedLine(mask, pt1, pt2, (0,255,0), 2, tipLength=0.4)
+            out = cv2.add(vis, mask)
+            cv2.imshow("RAFT Sparse Flow", out)
+            cv2.waitKey(1)
+
+
+        if self.dense_viz:
+            # raw magnitude & angle (pixels/frame)
+            mag, ang = cv2.cartToPolar(flow_u, flow_v, angleInDegrees=False)
+            # convert to m/s
+            mag_mps = (mag / dt) * self.pixel_to_meter
+            # threshold out noise
+            mag_mps[mag_mps < self.dense_threshold] = 0
+            # build HSV
+            hsv = np.zeros((self.height, self.width, 3), dtype=np.uint8)
+            # Hue = angle, scaled to [0..180]
+            hsv[...,0] = np.uint8(ang * 90.0 / np.pi)
+            hsv[...,1] = 255
+            # Value = normalized magnitude (0→255)
+            norm = cv2.normalize(mag_mps, None, 0, 255, cv2.NORM_MINMAX)
+            hsv[...,2] = norm.astype(np.uint8)
+            # to BGR for display
+            bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+            cv2.imshow("RAFT Dense Flow", bgr)
+            cv2.waitKey(1)
+
+        
 
         # Update for next frame
         self.prev_image = frame
